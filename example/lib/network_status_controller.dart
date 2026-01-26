@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_validator/connectivity_validator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 /// Best Practice: NetworkStatusController for real-time connectivity monitoring
@@ -47,9 +48,6 @@ class NetworkStatusController extends GetxController {
       _subscription = _validator.onConnectivityChanged.listen(
         (isOnline) {
           // Debug: Print to console to verify stream is working
-          print(
-            '🔔 Connectivity update received: ${isOnline ? "ONLINE" : "OFFLINE"}',
-          );
 
           // Update state immediately when connectivity changes
           isOffline.value = !isOnline;
@@ -59,7 +57,7 @@ class NetworkStatusController extends GetxController {
         },
         onError: (error) {
           // Handle stream errors gracefully
-          print('❌ Connectivity stream error: $error');
+          debugPrint('❌ Connectivity stream error: $error');
           hasError.value = true;
           errorMessage.value = error.toString();
           // Assume offline on error to be safe
@@ -68,11 +66,9 @@ class NetworkStatusController extends GetxController {
         },
         cancelOnError: false, // Keep listening even after errors
       );
-
-      print('✅ Started listening to connectivity changes');
     } catch (e) {
       // Handle initialization errors
-      print('❌ Failed to start listening: $e');
+      debugPrint('❌ Failed to start listening: $e');
       hasError.value = true;
       errorMessage.value = 'Failed to start listening: $e';
       isOffline.value = true;

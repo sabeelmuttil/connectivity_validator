@@ -7,7 +7,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
@@ -93,7 +92,6 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                 
                 // If HTTPS test has determined we're offline, don't override with stale capabilities
                 if (quickCheck && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                    Log.d("ConnectivityValidator", "Capabilities say ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
                     // Don't send update - keep current OFFLINE state from HTTPS test
                 } else {
                     // Send immediate update for responsiveness
@@ -149,7 +147,6 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                 
                 // If HTTPS test has determined we're offline, don't override with stale capabilities
                 if (quickCheck && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                    Log.d("ConnectivityValidator", "Capabilities say ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
                     // Don't send update - keep current OFFLINE state from HTTPS test
                 } else {
                     // Send immediate update based on capabilities for responsiveness
@@ -222,8 +219,6 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
         // Create periodic check runnable
         periodicCheckRunnable = object : Runnable {
             override fun run() {
-                Log.d("ConnectivityValidator", "Periodic check running...")
-                
                 // Periodically check network state to detect when router loses internet
                 // This is important because Android might not immediately update NET_CAPABILITY_VALIDATED
                 val network = connectivityManager.activeNetwork
@@ -233,18 +228,14 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                     val hasInternet = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     val hasValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                     
-                    Log.d("ConnectivityValidator", "Capabilities: INTERNET=$hasInternet, VALIDATED=$hasValidated")
-                    
                     if (hasInternet && hasValidated) {
                         // Capabilities say online, but check if HTTPS test has determined we're offline
                         // If we have multiple HTTPS failures, trust HTTPS over stale capabilities
                         if (consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
                             // HTTPS test says offline - don't override it with stale capabilities
-                            Log.d("ConnectivityValidator", "Capabilities say ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
                             // Don't send update - keep current OFFLINE state
                         } else {
                             // No HTTPS failures or only 1 failure - trust capabilities
-                            Log.d("ConnectivityValidator", "Capabilities indicate ONLINE - sending update")
                             sendUpdate(events, true, force = false)
                         }
                         
@@ -253,18 +244,15 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastConnectivityTestTime > 5000) {
                             invalidateConnectivityCache()
-                            Log.d("ConnectivityValidator", "Periodic HTTPS verification...")
                             verifyConnectivityAsync(network, forceFresh = true)
                         }
                     } else {
                         // No capabilities, definitely offline - send update immediately
-                        Log.d("ConnectivityValidator", "No capabilities - sending OFFLINE")
                         consecutiveHttpsFailures = 0  // Reset failure counter
                         sendUpdate(events, false, force = true)
                     }
                 } else {
                     // No network, offline - send update immediately with force
-                    Log.d("ConnectivityValidator", "No network - sending OFFLINE")
                     sendUpdate(events, false, force = true)
                 }
                 
@@ -294,12 +282,9 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                 // Run connectivity test in background thread (non-blocking)
         currentConnectivityTest = executor.submit {
             try {
-                Log.d("ConnectivityValidator", "HTTP test starting...")
                 val result = testActualConnectivity(network)
                 lastConnectivityTestTime = System.currentTimeMillis()
                 lastConnectivityTestResult = result
-                
-                Log.d("ConnectivityValidator", "HTTPS test result: ${if (result) "ONLINE" else "OFFLINE"}")
                 
                 val currentState = lastState ?: false
                 
@@ -308,38 +293,29 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                     consecutiveHttpsFailures = 0
                     if (!currentState) {
                         // HTTPS says online but we're showing offline - update immediately
-                        Log.d("ConnectivityValidator", "HTTPS test says ONLINE - updating from OFFLINE")
                         mainHandler.post {
                             sendUpdate(events, true, force = true)
                         }
-                    } else {
-                        Log.d("ConnectivityValidator", "HTTPS test confirms ONLINE")
                     }
                 } else {
                     // HTTPS test failed - increment failure counter
                     consecutiveHttpsFailures++
-                    Log.d("ConnectivityValidator", "HTTPS test failed (consecutive failures: $consecutiveHttpsFailures)")
                     
                     // Only override capabilities if we have multiple consecutive failures
                     // This prevents ping-pong from single test failures
                     if (currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                        Log.d("ConnectivityValidator", "Multiple HTTPS failures - overriding capabilities to OFFLINE")
                         mainHandler.post {
                             sendUpdate(events, false, force = true)
                         }
-                    } else if (currentState) {
-                        Log.d("ConnectivityValidator", "HTTPS test failed but trusting capabilities (need ${REQUIRED_FAILURES_TO_OVERRIDE} failures)")
                     }
                 }
             } catch (e: Exception) {
-                Log.e("ConnectivityValidator", "HTTPS test exception: $e")
                 // Test threw exception - treat as failure
                 consecutiveHttpsFailures++
                 val currentState = lastState ?: false
                 
                 // Only override if we have multiple consecutive failures
                 if (currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                    Log.d("ConnectivityValidator", "Multiple HTTPS test exceptions - overriding to OFFLINE")
                     mainHandler.post {
                         sendUpdate(events, false, force = true)
                     }
@@ -381,26 +357,20 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
         // CRITICAL: Always send updates from periodic checks and HTTP tests (force=true)
         // Only skip if not forced AND state hasn't changed
         if (!force && isOnline == lastState) {
-            Log.d("ConnectivityValidator", "Skipping update - state unchanged: $isOnline")
             return
         }
         
         // Update last state
-        val previousState = lastState
         lastState = isOnline
-        
-        Log.d("ConnectivityValidator", "Sending connectivity update: ${if (isOnline) "ONLINE" else "OFFLINE"} (force=$force, previous=$previousState)")
 
         // Send immediately on main thread for faster response
         // Using post ensures thread safety without delay
         val sendUpdateAction = Runnable {
             try {
                 events?.success(isOnline)
-                Log.d("ConnectivityValidator", "Update sent successfully: ${if (isOnline) "ONLINE" else "OFFLINE"}")
             } catch (e: Exception) {
                 // If sending fails, events might be null (stream cancelled)
                 // This is normal and can be ignored
-                Log.e("ConnectivityValidator", "Failed to send update: $e")
             }
         }
         
@@ -471,25 +441,20 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
                     // 204 (No Content) is the expected response from generate_204
                     // Any 2xx or 3xx response indicates connectivity
                     if (responseCode == 204 || responseCode in 200..399) {
-                        Log.d("ConnectivityValidator", "HTTP test succeeded with $urlString: $responseCode")
                         return true
                     }
                 }
             } catch (e: java.net.SocketTimeoutException) {
                 // Timeout - try next URL
-                Log.d("ConnectivityValidator", "HTTP test timeout for $urlString")
                 continue
             } catch (e: java.net.UnknownHostException) {
                 // Cannot resolve host - try next URL
-                Log.d("ConnectivityValidator", "HTTP test unknown host for $urlString")
                 continue
             } catch (e: java.io.IOException) {
                 // IO error - try next URL
-                Log.d("ConnectivityValidator", "HTTP test IO error for $urlString: ${e.message}")
                 continue
             } catch (e: Exception) {
                 // Any other exception - try next URL
-                Log.d("ConnectivityValidator", "HTTP test error for $urlString: ${e.message}")
                 continue
             } finally {
                 // Always disconnect to free resources
@@ -502,7 +467,6 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
         }
         
         // All URLs failed - no connectivity
-        Log.d("ConnectivityValidator", "HTTP test failed for all endpoints")
         return false
     }
 }

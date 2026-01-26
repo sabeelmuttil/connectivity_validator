@@ -38,7 +38,6 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
             
             // If HTTPS test has determined we're offline, don't override with stale path status
             if pathSaysOnline && self.consecutiveHttpsFailures >= self.REQUIRED_FAILURES_TO_OVERRIDE {
-                print("ConnectivityValidator: Path says ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
                 // Don't send update - keep current OFFLINE state from HTTPS test
                 return
             }
@@ -82,8 +81,6 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         periodicCheckTimer = Timer.scheduledTimer(withTimeInterval: PERIODIC_CHECK_INTERVAL, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             
-            print("ConnectivityValidator: Periodic check running...")
-            
             // Check current path status
             guard let path = self.monitor?.currentPath else {
                 // No path - definitely offline
@@ -95,12 +92,10 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
             }
             
             let pathSaysOnline = (path.status == .satisfied)
-            print("ConnectivityValidator: Path status: \(pathSaysOnline ? "ONLINE" : "OFFLINE")")
             
             if pathSaysOnline {
                 // Path says online, but check if HTTPS test has determined we're offline
                 if self.consecutiveHttpsFailures >= self.REQUIRED_FAILURES_TO_OVERRIDE {
-                    print("ConnectivityValidator: Path says ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
                     // Don't send update - keep current OFFLINE state
                 } else {
                     // No HTTPS failures or only 1 failure - trust path status
@@ -113,7 +108,6 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
                 // Verify with HTTPS test periodically
                 let currentTime = Date().timeIntervalSince1970 * 1000
                 if currentTime - self.lastConnectivityTestTime > self.CONNECTIVITY_TEST_CACHE_MS {
-                    print("ConnectivityValidator: Periodic HTTPS verification...")
                     self.verifyConnectivityAsync()
                 }
             } else {
@@ -139,8 +133,6 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         if currentTime - lastConnectivityTestTime < CONNECTIVITY_TEST_CACHE_MS {
             return
         }
-        
-        print("ConnectivityValidator: HTTPS test starting...")
         
         // Test URLs (HTTPS endpoints)
         let testUrls = [
@@ -178,16 +170,12 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
                 let statusCode = httpResponse.statusCode
                 if statusCode == 204 || (statusCode >= 200 && statusCode < 400) {
                     // Success - we have connectivity
-                    print("ConnectivityValidator: HTTPS test succeeded with \(urls[index]): \(statusCode)")
                     self.handleHttpsTestResult(success: true)
                     return
                 }
             }
             
             // This URL failed, try next
-            if let error = error {
-                print("ConnectivityValidator: HTTPS test error for \(urls[index]): \(error.localizedDescription)")
-            }
             self.testConnectivityWithUrls(urls, index: index + 1)
         }
         
@@ -202,28 +190,20 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         if success {
             // HTTPS test succeeded - reset failure counter
             consecutiveHttpsFailures = 0
-            print("ConnectivityValidator: HTTPS test result: ONLINE")
             
             if !currentState {
                 // HTTPS says online but we're showing offline - update immediately
-                print("ConnectivityValidator: HTTPS test says ONLINE - updating from OFFLINE")
                 lastState = true
                 sendUpdate(isOnline: true, force: true)
-            } else {
-                print("ConnectivityValidator: HTTPS test confirms ONLINE")
             }
         } else {
             // HTTPS test failed - increment failure counter
             consecutiveHttpsFailures += 1
-            print("ConnectivityValidator: HTTPS test result: OFFLINE (consecutive failures: \(consecutiveHttpsFailures))")
             
             // Only override path status if we have multiple consecutive failures
             if currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE {
-                print("ConnectivityValidator: Multiple HTTPS failures - overriding path status to OFFLINE")
                 lastState = false
                 sendUpdate(isOnline: false, force: true)
-            } else if currentState {
-                print("ConnectivityValidator: HTTPS test failed but trusting path status (need \(REQUIRED_FAILURES_TO_OVERRIDE) failures)")
             }
         }
     }
@@ -233,19 +213,14 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         
         // Only skip if not forced AND state hasn't changed
         if !force && isOnline == (lastState ?? false) {
-            print("ConnectivityValidator: Skipping update - state unchanged: \(isOnline)")
             return
         }
         
-        print("ConnectivityValidator: Sending connectivity update: \(isOnline ? "ONLINE" : "OFFLINE") (force=\(force))")
-        
         if Thread.isMainThread {
             events(isOnline)
-            print("ConnectivityValidator: Update sent successfully: \(isOnline ? "ONLINE" : "OFFLINE")")
         } else {
             DispatchQueue.main.async {
                 events(isOnline)
-                print("ConnectivityValidator: Update sent successfully: \(isOnline ? "ONLINE" : "OFFLINE")")
             }
         }
     }

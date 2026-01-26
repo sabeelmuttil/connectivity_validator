@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'connectivity_validator_platform_interface.dart';
 
-/// An implementation of [ConnectivityValidatorPlatform] that uses method channels.
+/// An implementation of [ConnectivityValidatorPlatform] that uses method
+/// channels.
 class MethodChannelConnectivityValidator extends ConnectivityValidatorPlatform {
   /// The method channel used to interact with the native platform.
   @visibleForTesting
