@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 /// Best Practice Example: Real-time Connectivity Monitoring
-/// 
+///
 /// This example demonstrates:
 /// - Proper GetX controller initialization
 /// - Real-time connectivity status updates
@@ -12,11 +12,11 @@ import 'package:get/get.dart';
 /// - Last update timestamp
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Best Practice: Initialize controller as permanent (lives for app lifetime)
   // This ensures connectivity monitoring continues throughout the app lifecycle
   Get.put(NetworkStatusController(), permanent: true);
-  
+
   runApp(const MyApp());
 }
 
@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
 }
 
 /// Best Practice: Connectivity Status Page
-/// 
+///
 /// Shows real-time connectivity status with:
 /// - Visual indicators (icons, colors)
 /// - Status messages
@@ -90,12 +90,10 @@ class ConnectivityStatusPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Status Text
                 Text(
-                  hasError
-                      ? 'Error'
-                      : (isOffline ? 'Offline' : 'Online'),
+                  hasError ? 'Error' : (isOffline ? 'Offline' : 'Online'),
                   style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
@@ -105,24 +103,21 @@ class ConnectivityStatusPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Status Message
                 Text(
                   hasError
                       ? errorMessage.isNotEmpty
-                          ? errorMessage
-                          : 'An error occurred while checking connectivity'
+                            ? errorMessage
+                            : 'An error occurred while checking connectivity'
                       : (isOffline
-                          ? 'No internet connection or captive portal detected'
-                          : 'Internet connection validated and working'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
+                            ? 'No internet connection or captive portal detected'
+                            : 'Internet connection validated and working'),
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Last Update Time
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -144,16 +139,13 @@ class ConnectivityStatusPage extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'Last update: ${_formatTime(lastUpdate)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Real-time Indicator
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -178,7 +170,7 @@ class ConnectivityStatusPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Test Instructions
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -199,10 +191,7 @@ class ConnectivityStatusPage extends StatelessWidget {
                       const SizedBox(height: 8),
                       const Text(
                         'Disconnect your router\'s internet while WiFi remains connected. The status should update within 1-2 seconds.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ),
                     ],

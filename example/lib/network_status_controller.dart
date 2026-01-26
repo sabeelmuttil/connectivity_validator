@@ -1,9 +1,10 @@
 import 'dart:async';
+
 import 'package:connectivity_validator/connectivity_validator.dart';
 import 'package:get/get.dart';
 
 /// Best Practice: NetworkStatusController for real-time connectivity monitoring
-/// 
+///
 /// This controller demonstrates the recommended way to use connectivity_validator:
 /// - Properly manages stream subscription lifecycle
 /// - Handles errors gracefully
@@ -15,7 +16,7 @@ class NetworkStatusController extends GetxController {
   var lastUpdateTime = DateTime.now().obs;
   var hasError = false.obs;
   var errorMessage = ''.obs;
-  
+
   StreamSubscription? _subscription;
   final ConnectivityValidator _validator = ConnectivityValidator();
 
@@ -34,7 +35,7 @@ class NetworkStatusController extends GetxController {
   }
 
   /// Best Practice: Start listening to connectivity changes
-  /// 
+  ///
   /// This method:
   /// 1. Listens to the stream for real-time updates
   /// 2. Handles errors gracefully
@@ -46,8 +47,10 @@ class NetworkStatusController extends GetxController {
       _subscription = _validator.onConnectivityChanged.listen(
         (isOnline) {
           // Debug: Print to console to verify stream is working
-          print('🔔 Connectivity update received: ${isOnline ? "ONLINE" : "OFFLINE"}');
-          
+          print(
+            '🔔 Connectivity update received: ${isOnline ? "ONLINE" : "OFFLINE"}',
+          );
+
           // Update state immediately when connectivity changes
           isOffline.value = !isOnline;
           lastUpdateTime.value = DateTime.now();
@@ -65,7 +68,7 @@ class NetworkStatusController extends GetxController {
         },
         cancelOnError: false, // Keep listening even after errors
       );
-      
+
       print('✅ Started listening to connectivity changes');
     } catch (e) {
       // Handle initialization errors
@@ -78,6 +81,7 @@ class NetworkStatusController extends GetxController {
 
   /// Manually refresh connectivity status
   /// Useful for testing or manual checks
+  @override
   Future<void> refresh() async {
     try {
       final isOnline = await _validator.onConnectivityChanged.first;

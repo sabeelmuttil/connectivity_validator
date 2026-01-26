@@ -8,7 +8,8 @@ abstract class ConnectivityValidatorPlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static ConnectivityValidatorPlatform _instance = MethodChannelConnectivityValidator();
+  static ConnectivityValidatorPlatform _instance =
+      MethodChannelConnectivityValidator();
 
   /// The default instance of [ConnectivityValidatorPlatform] to use.
   ///
