@@ -30,7 +30,21 @@ flutter pub get
 
 ### Android
 
-No additional setup required. The plugin uses `ConnectivityManager` with `NET_CAPABILITY_VALIDATED` to ensure real internet connectivity.
+The plugin requires the following permissions in your `AndroidManifest.xml`:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required permission to check network connectivity state -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Optional: For WiFi-specific connectivity checks -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    ...
+</manifest>
+```
+
+**Note**: These permissions are typically already included in Flutter apps, but if you encounter permission errors, ensure they're declared in your app's `AndroidManifest.xml` file.
+
+The plugin uses `ConnectivityManager` with `NET_CAPABILITY_VALIDATED` to ensure real internet connectivity.
 
 ### iOS
 
@@ -437,13 +451,24 @@ The example shows:
 
 - Ensure you're properly listening to the stream
 - Check that you're not canceling the subscription prematurely
-- Verify platform-specific permissions are granted (usually not required for basic connectivity)
+- On Android, verify that `ACCESS_NETWORK_STATE` permission is declared in your `AndroidManifest.xml`
+
+### Permission errors on Android
+
+If you see an error like `android.permission.ACCESS_NETWORK_STATE`, add the required permissions to your app's `AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+```
+
+The plugin's manifest includes these permissions, but your app's manifest must also declare them.
 
 ### Always showing offline
 
 - Check device network settings
 - Verify you're not in airplane mode
-- On Android, ensure the app has network access permissions (usually granted by default)
+- On Android, ensure the app has network access permissions declared in `AndroidManifest.xml`
 
 ### iOS build issues
 
