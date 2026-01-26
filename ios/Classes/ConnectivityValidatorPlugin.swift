@@ -7,6 +7,14 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
     private let queue = DispatchQueue(label: "NetworkMonitor")
     private var lastState: Bool? = nil
     private var eventSink: FlutterEventSink?
+    
+    // HTTPS connectivity testing
+    private var consecutiveHttpsFailures = 0
+    private let REQUIRED_FAILURES_TO_OVERRIDE = 2
+    private var lastConnectivityTestTime: TimeInterval = 0
+    private let CONNECTIVITY_TEST_CACHE_MS: TimeInterval = 5000 // 5 seconds
+    private var periodicCheckTimer: Timer?
+    private let PERIODIC_CHECK_INTERVAL: TimeInterval = 2.0 // 2 seconds
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterEventChannel(name: "connectivity_validator/status", binaryMessenger: registrar.messenger())
@@ -16,37 +24,239 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
 
     public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         self.eventSink = events
+        
+        // Monitor all network interfaces (WiFi, cellular, etc.)
+        // This ensures we detect changes when WiFi loses internet but remains connected
         monitor = NWPathMonitor()
 
         monitor?.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }
 
             // .satisfied means internet is validated (past captive portals)
-            let isOnline = (path.status == .satisfied)
-
-            // Optimization: Only send if state changed
-            if isOnline != self.lastState {
-                self.lastState = isOnline
-
-                // Native updates happen on background queue; send to Flutter on Main Thread
-                DispatchQueue.main.async {
-                    events(isOnline)
+            // However, this can be stale when router loses internet but WiFi stays connected
+            let pathSaysOnline = (path.status == .satisfied)
+            
+            // If HTTPS test has determined we're offline, don't override with stale path status
+            if pathSaysOnline && self.consecutiveHttpsFailures >= self.REQUIRED_FAILURES_TO_OVERRIDE {
+                print("ConnectivityValidator: Path says ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
+                // Don't send update - keep current OFFLINE state from HTTPS test
+                return
+            }
+            
+            // Send immediate update based on path status for responsiveness
+            if pathSaysOnline != self.lastState {
+                self.lastState = pathSaysOnline
+                
+                // Send immediately on main thread for faster response
+                if Thread.isMainThread {
+                    events(pathSaysOnline)
+                } else {
+                    DispatchQueue.main.async {
+                        events(pathSaysOnline)
+                    }
                 }
+            }
+            
+            // If path says online, verify with HTTPS test in background
+            // This catches cases where path.status is stale (router lost internet)
+            if pathSaysOnline {
+                self.verifyConnectivityAsync()
+            } else {
+                // Path says offline - reset failure counter
+                self.consecutiveHttpsFailures = 0
             }
         }
 
+        // Start monitoring - this will immediately call pathUpdateHandler with current state
         monitor?.start(queue: queue)
         
-        // Send initial state after starting monitor (first update will come immediately)
-        // The pathUpdateHandler will be called with the current state when monitor starts
+        // Start periodic checks to detect when router loses internet
+        startPeriodicCheck()
+        
         return nil
+    }
+    
+    private func startPeriodicCheck() {
+        stopPeriodicCheck()
+        
+        periodicCheckTimer = Timer.scheduledTimer(withTimeInterval: PERIODIC_CHECK_INTERVAL, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            print("ConnectivityValidator: Periodic check running...")
+            
+            // Check current path status
+            guard let path = self.monitor?.currentPath else {
+                // No path - definitely offline
+                if self.lastState != false {
+                    self.lastState = false
+                    self.sendUpdate(isOnline: false, force: true)
+                }
+                return
+            }
+            
+            let pathSaysOnline = (path.status == .satisfied)
+            print("ConnectivityValidator: Path status: \(pathSaysOnline ? "ONLINE" : "OFFLINE")")
+            
+            if pathSaysOnline {
+                // Path says online, but check if HTTPS test has determined we're offline
+                if self.consecutiveHttpsFailures >= self.REQUIRED_FAILURES_TO_OVERRIDE {
+                    print("ConnectivityValidator: Path says ONLINE but HTTPS says OFFLINE - keeping OFFLINE")
+                    // Don't send update - keep current OFFLINE state
+                } else {
+                    // No HTTPS failures or only 1 failure - trust path status
+                    if self.lastState != true {
+                        self.lastState = true
+                        self.sendUpdate(isOnline: true, force: false)
+                    }
+                }
+                
+                // Verify with HTTPS test periodically
+                let currentTime = Date().timeIntervalSince1970 * 1000
+                if currentTime - self.lastConnectivityTestTime > self.CONNECTIVITY_TEST_CACHE_MS {
+                    print("ConnectivityValidator: Periodic HTTPS verification...")
+                    self.verifyConnectivityAsync()
+                }
+            } else {
+                // Path says offline - reset failure counter and send update
+                self.consecutiveHttpsFailures = 0
+                if self.lastState != false {
+                    self.lastState = false
+                    self.sendUpdate(isOnline: false, force: true)
+                }
+            }
+        }
+    }
+    
+    private func stopPeriodicCheck() {
+        periodicCheckTimer?.invalidate()
+        periodicCheckTimer = nil
+    }
+    
+    private func verifyConnectivityAsync() {
+        let currentTime = Date().timeIntervalSince1970 * 1000
+        
+        // Check cache
+        if currentTime - lastConnectivityTestTime < CONNECTIVITY_TEST_CACHE_MS {
+            return
+        }
+        
+        print("ConnectivityValidator: HTTPS test starting...")
+        
+        // Test URLs (HTTPS endpoints)
+        let testUrls = [
+            "https://www.google.com/generate_204",
+            "https://connectivitycheck.gstatic.com/generate_204",
+            "https://clients3.google.com/generate_204"
+        ]
+        
+        // Try each URL sequentially - if any succeeds, we have connectivity
+        testConnectivityWithUrls(testUrls, index: 0)
+    }
+    
+    private func testConnectivityWithUrls(_ urls: [String], index: Int) {
+        guard index < urls.count else {
+            // All URLs failed
+            handleHttpsTestResult(success: false)
+            return
+        }
+        
+        guard let url = URL(string: urls[index]) else {
+            // Invalid URL, try next
+            testConnectivityWithUrls(urls, index: index + 1)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 0.5
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                let statusCode = httpResponse.statusCode
+                if statusCode == 204 || (statusCode >= 200 && statusCode < 400) {
+                    // Success - we have connectivity
+                    print("ConnectivityValidator: HTTPS test succeeded with \(urls[index]): \(statusCode)")
+                    self.handleHttpsTestResult(success: true)
+                    return
+                }
+            }
+            
+            // This URL failed, try next
+            if let error = error {
+                print("ConnectivityValidator: HTTPS test error for \(urls[index]): \(error.localizedDescription)")
+            }
+            self.testConnectivityWithUrls(urls, index: index + 1)
+        }
+        
+        task.resume()
+    }
+    
+    private func handleHttpsTestResult(success: Bool) {
+        lastConnectivityTestTime = Date().timeIntervalSince1970 * 1000
+        
+        let currentState = lastState ?? false
+        
+        if success {
+            // HTTPS test succeeded - reset failure counter
+            consecutiveHttpsFailures = 0
+            print("ConnectivityValidator: HTTPS test result: ONLINE")
+            
+            if !currentState {
+                // HTTPS says online but we're showing offline - update immediately
+                print("ConnectivityValidator: HTTPS test says ONLINE - updating from OFFLINE")
+                lastState = true
+                sendUpdate(isOnline: true, force: true)
+            } else {
+                print("ConnectivityValidator: HTTPS test confirms ONLINE")
+            }
+        } else {
+            // HTTPS test failed - increment failure counter
+            consecutiveHttpsFailures += 1
+            print("ConnectivityValidator: HTTPS test result: OFFLINE (consecutive failures: \(consecutiveHttpsFailures))")
+            
+            // Only override path status if we have multiple consecutive failures
+            if currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE {
+                print("ConnectivityValidator: Multiple HTTPS failures - overriding path status to OFFLINE")
+                lastState = false
+                sendUpdate(isOnline: false, force: true)
+            } else if currentState {
+                print("ConnectivityValidator: HTTPS test failed but trusting path status (need \(REQUIRED_FAILURES_TO_OVERRIDE) failures)")
+            }
+        }
+    }
+    
+    private func sendUpdate(isOnline: Bool, force: Bool) {
+        guard let events = eventSink else { return }
+        
+        // Only skip if not forced AND state hasn't changed
+        if !force && isOnline == (lastState ?? false) {
+            print("ConnectivityValidator: Skipping update - state unchanged: \(isOnline)")
+            return
+        }
+        
+        print("ConnectivityValidator: Sending connectivity update: \(isOnline ? "ONLINE" : "OFFLINE") (force=\(force))")
+        
+        if Thread.isMainThread {
+            events(isOnline)
+            print("ConnectivityValidator: Update sent successfully: \(isOnline ? "ONLINE" : "OFFLINE")")
+        } else {
+            DispatchQueue.main.async {
+                events(isOnline)
+                print("ConnectivityValidator: Update sent successfully: \(isOnline ? "ONLINE" : "OFFLINE")")
+            }
+        }
     }
 
     public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        stopPeriodicCheck()
         monitor?.cancel()
         monitor = nil
         lastState = nil
         eventSink = nil
+        consecutiveHttpsFailures = 0
         return nil
     }
 }

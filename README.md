@@ -6,10 +6,14 @@ A Flutter plugin that provides **validated internet connectivity status** with r
 
 - ✅ **Validated Connectivity**: Checks for real internet access, not just network connection
 - ✅ **Captive Portal Detection**: Detects when connected to WiFi but behind a captive portal
+- ✅ **Router Internet Loss Detection**: Detects when WiFi router loses internet while staying connected
+- ✅ **HTTPS Connectivity Testing**: Performs actual HTTPS requests to verify real internet access
+- ✅ **Smart Failure Handling**: Prevents ping-pong effects with intelligent failure counter
 - ✅ **Real-time Updates**: Stream-based API for continuous connectivity monitoring
-- ✅ **Cross-platform**: Works on both Android and iOS
+- ✅ **Cross-platform**: Works on both Android and iOS with identical behavior
 - ✅ **Lightweight**: Zero dependencies, framework-agnostic
 - ✅ **Optimized**: Only emits updates when connectivity state actually changes
+- ✅ **Battery Efficient**: Smart caching and periodic checks balance accuracy with performance
 
 ## Installation
 
@@ -44,11 +48,13 @@ The plugin requires the following permissions in your `AndroidManifest.xml`:
 
 **Note**: These permissions are typically already included in Flutter apps, but if you encounter permission errors, ensure they're declared in your app's `AndroidManifest.xml` file.
 
-The plugin uses `ConnectivityManager` with `NET_CAPABILITY_VALIDATED` to ensure real internet connectivity.
+The plugin uses `ConnectivityManager` with `NET_CAPABILITY_VALIDATED` and HTTPS connectivity testing to ensure real internet connectivity.
+
+**Note**: The plugin also requires `INTERNET` permission for HTTPS connectivity tests. This is typically already included in Flutter apps.
 
 ### iOS
 
-No additional setup required. The plugin uses `NWPathMonitor` with `.satisfied` status to detect validated connectivity.
+No additional setup required. The plugin uses `NWPathMonitor` with `.satisfied` status and HTTPS connectivity testing to detect validated connectivity.
 
 ## Basic Usage
 
@@ -407,16 +413,84 @@ validator.onConnectivityChanged.listen((isOnline) {
 
 ### Android
 
-The plugin uses Android's `ConnectivityManager` with `NetworkCallback` to monitor:
-- `NET_CAPABILITY_INTERNET`: Network has internet access
-- `NET_CAPABILITY_VALIDATED`: Network has been validated (bypasses captive portals)
+The plugin uses Android's `ConnectivityManager` with `NetworkCallback` and HTTPS connectivity testing:
 
-Only when both capabilities are present, the connection is considered "online".
+#### Two-Phase Validation System
+
+1. **Immediate Capability Checks** (Fast Response)
+   - Monitors multiple callbacks: `onAvailable`, `onLost`, `onCapabilitiesChanged`, and `onLinkPropertiesChanged`
+   - Checks `NET_CAPABILITY_INTERNET` and `NET_CAPABILITY_VALIDATED` for immediate updates
+   - Sends updates instantly when capabilities change
+
+2. **HTTPS Connectivity Verification** (Accurate Detection)
+   - When capabilities indicate online, performs HTTPS requests to Google's connectivity check endpoints
+   - Tests multiple endpoints: `www.google.com/generate_204`, `connectivitycheck.gstatic.com/generate_204`, `clients3.google.com/generate_204`
+   - Uses 500ms timeout per request for fast verification
+   - Runs in background thread to avoid blocking UI
+
+#### Smart Failure Handling
+
+- **Failure Counter**: Tracks consecutive HTTPS test failures
+- **Override Logic**: Only switches to OFFLINE after 2 consecutive HTTPS failures (prevents ping-pong effects)
+- **Respects HTTPS Results**: When HTTPS confirms OFFLINE, periodic capability checks won't override it
+- **Automatic Reset**: Counter resets when HTTPS test succeeds or capabilities say offline
+
+#### Periodic Checks
+
+- Runs every 2 seconds to detect router internet loss
+- Verifies connectivity with HTTPS tests every 5 seconds
+- Caches HTTPS test results for 5 seconds to balance accuracy with performance
+
+This dual approach ensures:
+- **Fast response** when network capabilities change
+- **Accurate detection** when router loses internet (even if WiFi stays connected)
+- **No ping-pong effects** from intermittent HTTPS test failures
+- **Battery efficient** with smart caching and periodic checks
 
 ### iOS
 
-The plugin uses iOS's `NWPathMonitor` to check network path status:
-- `.satisfied`: Network path is satisfied and validated (indicates real internet access, not just a connection)
+The plugin uses iOS's `NWPathMonitor` with HTTPS connectivity testing:
+
+#### Two-Phase Validation System
+
+1. **Immediate Path Status Checks** (Fast Response)
+   - Monitors all network interfaces (WiFi, cellular, etc.)
+   - Checks `.satisfied` status for immediate updates
+   - Sends updates instantly when path status changes
+
+2. **HTTPS Connectivity Verification** (Accurate Detection)
+   - When path status indicates online, performs HTTPS requests to Google's connectivity check endpoints
+   - Tests multiple endpoints sequentially until one succeeds
+   - Uses 500ms timeout per request for fast verification
+   - Runs asynchronously to avoid blocking
+
+#### Smart Failure Handling
+
+- **Failure Counter**: Tracks consecutive HTTPS test failures
+- **Override Logic**: Only switches to OFFLINE after 2 consecutive HTTPS failures (prevents ping-pong effects)
+- **Respects HTTPS Results**: When HTTPS confirms OFFLINE, periodic path checks won't override it
+- **Automatic Reset**: Counter resets when HTTPS test succeeds or path status says offline
+
+#### Periodic Checks
+
+- Runs every 2 seconds to detect router internet loss
+- Verifies connectivity with HTTPS tests every 5 seconds
+- Caches HTTPS test results for 5 seconds to balance accuracy with performance
+
+This dual approach ensures:
+- **Fast response** when network path status changes
+- **Accurate detection** when router loses internet (even if WiFi stays connected)
+- **No ping-pong effects** from intermittent HTTPS test failures
+- **Battery efficient** with smart caching and periodic checks
+
+### Why HTTPS Testing?
+
+Both Android's `NET_CAPABILITY_VALIDATED` and iOS's `NWPathMonitor.satisfied` can be **stale** when:
+- Router loses internet but WiFi connection remains active
+- Network is behind a captive portal that hasn't been detected yet
+- DNS issues prevent actual internet access
+
+HTTPS connectivity testing provides a **ground truth** check by making actual requests to reliable endpoints, ensuring the device truly has internet access.
 
 ## Example App
 
@@ -469,6 +543,14 @@ The plugin's manifest includes these permissions, but your app's manifest must a
 - Check device network settings
 - Verify you're not in airplane mode
 - On Android, ensure the app has network access permissions declared in `AndroidManifest.xml`
+- Check if HTTPS connectivity tests are being blocked by firewall or network restrictions
+
+### Ping-pong effect (rapidly switching between online/offline)
+
+The plugin includes smart failure handling to prevent this:
+- Requires 2 consecutive HTTPS test failures before overriding native status
+- Respects HTTPS test results when they conflict with native status
+- If you still experience ping-pong, it may indicate network instability or firewall blocking HTTPS tests
 
 ### iOS build issues
 

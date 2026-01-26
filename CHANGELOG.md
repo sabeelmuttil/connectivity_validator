@@ -8,11 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-01-27
 
 ### Added
+
 - Initial release of connectivity_validator plugin
 - **Validated connectivity checking**: Detects real internet access, not just network connection
 - **Captive portal detection**: Identifies when connected to WiFi but behind a captive portal
 - **Real-time updates**: Stream-based API (`onConnectivityChanged`) for continuous connectivity monitoring
-- **Android implementation**: 
+- **Android implementation**:
   - Uses `ConnectivityManager.NetworkCallback` for real-time network monitoring
   - Checks `NET_CAPABILITY_INTERNET` and `NET_CAPABILITY_VALIDATED` capabilities
   - Sends initial state immediately when stream is listened to
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Best practices and troubleshooting guide
 
 ### Technical Details
+
 - **Channel name**: `connectivity_validator/status` (consistent across all platforms)
 - **Zero dependencies**: Plugin itself has no external dependencies
 - **Framework-agnostic**: Works with any state management solution
@@ -42,9 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Thread-safe**: Properly handles main thread requirements for Flutter communication
 
 ### Platform Support
+
 - ✅ Android (API 24+)
 - ✅ iOS (iOS 12.0+)
-
-## [0.0.1] - Unreleased
-
-* Initial project setup
