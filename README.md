@@ -21,7 +21,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.1.0
+  connectivity_validator: ^0.0.1
 ```
 
 Then run:
@@ -156,8 +156,8 @@ void main() {
 
 // In your widget
 Obx(() => Text(
-  Get.find<NetworkStatusController>().isOffline.value 
-    ? 'Offline' 
+  Get.find<NetworkStatusController>().isOffline.value
+    ? 'Offline'
     : 'Online'
 ))
 ```
@@ -246,7 +246,7 @@ class ConnectivityNotifier extends StateNotifier<bool> {
   }
 }
 
-final connectivityNotifierProvider = 
+final connectivityNotifierProvider =
     StateNotifierProvider<ConnectivityNotifier, bool>((ref) {
   return ConnectivityNotifier();
 });
@@ -386,10 +386,12 @@ The main class for accessing connectivity status.
 ##### `onConnectivityChanged` → `Stream<bool>`
 
 Returns a stream of boolean values indicating connectivity status:
+
 - `true`: Internet is available and validated (active connection with real internet access)
 - `false`: No internet connection or captive portal detected
 
 The stream emits:
+
 - Immediately when you start listening (initial state)
 - Whenever the connectivity status changes
 - Only when the state actually changes (optimized to avoid duplicate emissions)
@@ -442,6 +444,7 @@ The plugin uses Android's `ConnectivityManager` with `NetworkCallback` and HTTPS
 - Caches HTTPS test results for 5 seconds to balance accuracy with performance
 
 This dual approach ensures:
+
 - **Fast response** when network capabilities change
 - **Accurate detection** when router loses internet (even if WiFi stays connected)
 - **No ping-pong effects** from intermittent HTTPS test failures
@@ -478,6 +481,7 @@ The plugin uses iOS's `NWPathMonitor` with HTTPS connectivity testing:
 - Caches HTTPS test results for 5 seconds to balance accuracy with performance
 
 This dual approach ensures:
+
 - **Fast response** when network path status changes
 - **Accurate detection** when router loses internet (even if WiFi stays connected)
 - **No ping-pong effects** from intermittent HTTPS test failures
@@ -486,6 +490,7 @@ This dual approach ensures:
 ### Why HTTPS Testing?
 
 Both Android's `NET_CAPABILITY_VALIDATED` and iOS's `NWPathMonitor.satisfied` can be **stale** when:
+
 - Router loses internet but WiFi connection remains active
 - Network is behind a captive portal that hasn't been detected yet
 - DNS issues prevent actual internet access
@@ -503,6 +508,7 @@ flutter run
 ```
 
 The example shows:
+
 - Real-time connectivity status updates
 - Visual indicators (icons and colors)
 - Proper state management with GetX
@@ -548,6 +554,7 @@ The plugin's manifest includes these permissions, but your app's manifest must a
 ### Ping-pong effect (rapidly switching between online/offline)
 
 The plugin includes smart failure handling to prevent this:
+
 - Requires 2 consecutive HTTPS test failures before overriding native status
 - Respects HTTPS test results when they conflict with native status
 - If you still experience ping-pong, it may indicate network instability or firewall blocking HTTPS tests

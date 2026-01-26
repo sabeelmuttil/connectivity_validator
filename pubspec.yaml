@@ -1,7 +1,8 @@
 name: connectivity_validator
-description: "A Flutter package that provides validated internet connectivity status."
-version: 0.1.0
+description: "A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs."
+version: 0.0.1
 homepage: https://github.com/sabeelmuttil/connectivity_validator
+repository: https://github.com/sabeelmuttil/connectivity_validator
 # author: Sabeel KM
 
 environment:
