@@ -21,7 +21,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.3
+  connectivity_validator: ^0.0.4
 ```
 
 Then run:
@@ -55,6 +55,8 @@ The plugin uses `ConnectivityManager` with `NET_CAPABILITY_VALIDATED` and HTTPS 
 ### iOS
 
 No additional setup required. The plugin uses `NWPathMonitor` with `.satisfied` status and HTTPS connectivity testing to detect validated connectivity.
+
+**Note**: The plugin supports both CocoaPods and Swift Package Manager (SPM). Flutter will automatically use the appropriate dependency manager based on your project configuration.
 
 ## Basic Usage
 
