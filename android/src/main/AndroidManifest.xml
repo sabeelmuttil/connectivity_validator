@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.example.connectivity_validator">
+  package="com.skm.connectivity_validator">
     <!-- Required permission to check network connectivity state -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Optional: For WiFi-specific connectivity checks -->

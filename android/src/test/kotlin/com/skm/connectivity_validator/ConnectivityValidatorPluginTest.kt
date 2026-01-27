@@ -1,4 +1,4 @@
-package com.example.connectivity_validator
+package com.skm.connectivity_validator
 
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel

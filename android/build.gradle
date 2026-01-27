@@ -1,4 +1,4 @@
-group = "com.example.connectivity_validator"
+group = "com.skm.connectivity_validator"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -25,7 +25,7 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
 android {
-    namespace = "com.example.connectivity_validator"
+    namespace = "com.skm.connectivity_validator"
 
     compileSdk = 36
 

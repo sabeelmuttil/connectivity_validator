@@ -1,4 +1,4 @@
-package com.example.connectivity_validator
+package com.skm.connectivity_validator
 
 import android.content.Context
 import android.net.ConnectivityManager

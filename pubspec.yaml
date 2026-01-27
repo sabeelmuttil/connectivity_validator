@@ -3,7 +3,6 @@ description: "A robust internet connectivity checker that validates actual netwo
 version: 0.0.2
 homepage: https://github.com/sabeelmuttil/connectivity_validator
 repository: https://github.com/sabeelmuttil/connectivity_validator
-# author: Sabeel KM
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -27,7 +26,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.example.connectivity_validator
+        package: com.skm.connectivity_validator
         pluginClass: ConnectivityValidatorPlugin
       ios:
         pluginClass: ConnectivityValidatorPlugin
