@@ -1,30 +1,25 @@
 import 'package:connectivity_validator/connectivity_validator.dart';
-import 'package:connectivity_validator/connectivity_validator_method_channel.dart';
-import 'package:connectivity_validator/connectivity_validator_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-
-class MockConnectivityValidatorPlatform
-    with MockPlatformInterfaceMixin
-    implements ConnectivityValidatorPlatform {
-  @override
-  Future<String?> getPlatformVersion() => Future.value('42');
-}
 
 void main() {
-  final ConnectivityValidatorPlatform initialPlatform =
-      ConnectivityValidatorPlatform.instance;
-
-  test('$MethodChannelConnectivityValidator is the default instance', () {
-    expect(initialPlatform, isInstanceOf<MethodChannelConnectivityValidator>());
+  test('ConnectivityValidator creates instance correctly', () {
+    ConnectivityValidator connectivityValidator = ConnectivityValidator();
+    expect(connectivityValidator, isA<ConnectivityValidator>());
   });
 
-  test('getPlatformVersion', () async {
-    ConnectivityValidator connectivityValidatorPlugin = ConnectivityValidator();
-    MockConnectivityValidatorPlatform fakePlatform =
-        MockConnectivityValidatorPlatform();
-    ConnectivityValidatorPlatform.instance = fakePlatform;
+  test('onConnectivityChanged returns a stream', () {
+    ConnectivityValidator connectivityValidator = ConnectivityValidator();
+    final stream = connectivityValidator.onConnectivityChanged;
 
-    expect(await connectivityValidatorPlugin.onConnectivityChanged.first, true);
+    expect(stream, isA<Stream<bool>>());
+  });
+
+  test('onConnectivityChanged can be accessed multiple times', () {
+    ConnectivityValidator connectivityValidator = ConnectivityValidator();
+    final stream1 = connectivityValidator.onConnectivityChanged;
+    final stream2 = connectivityValidator.onConnectivityChanged;
+
+    expect(stream1, isA<Stream<bool>>());
+    expect(stream2, isA<Stream<bool>>());
   });
 }

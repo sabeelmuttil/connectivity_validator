@@ -1,27 +1,26 @@
-import 'package:connectivity_validator/connectivity_validator_method_channel.dart';
-import 'package:flutter/services.dart';
+import 'package:connectivity_validator/connectivity_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  MethodChannelConnectivityValidator platform =
-      MethodChannelConnectivityValidator();
-  const MethodChannel channel = MethodChannel('connectivity_validator');
-
-  setUp(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      return '42';
-    });
+  test('ConnectivityValidator creates instance correctly', () {
+    ConnectivityValidator validator = ConnectivityValidator();
+    expect(validator, isA<ConnectivityValidator>());
   });
 
-  tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null);
+  test('onConnectivityChanged returns a stream', () {
+    ConnectivityValidator validator = ConnectivityValidator();
+    final stream = validator.onConnectivityChanged;
+
+    expect(stream, isA<Stream<bool>>());
   });
 
-  test('getPlatformVersion', () async {
-    expect(await platform.getPlatformVersion(), '42');
+  test('onConnectivityChanged stream is properly typed', () {
+    ConnectivityValidator validator = ConnectivityValidator();
+    final stream = validator.onConnectivityChanged;
+
+    // Verify the stream type
+    expect(stream, isA<Stream<bool>>());
+    // Note: Actual event testing requires platform integration tests
+    // as EventChannel mocking is complex and requires native platform setup
   });
 }

@@ -71,7 +71,7 @@ class ConnectivityStatusPage extends StatelessWidget {
         final errorMessage = controller.errorMessage.value;
         final lastUpdate = controller.lastUpdateTime.value;
 
-        return Center(
+        return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
