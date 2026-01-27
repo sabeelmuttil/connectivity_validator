@@ -1,12 +1,12 @@
 name: connectivity_validator
 description: "A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs."
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/sabeelmuttil/connectivity_validator
 repository: https://github.com/sabeelmuttil/connectivity_validator
 # author: Sabeel KM
 
 environment:
-  sdk: ^3.10.7
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.3.0"
 
 dependencies:

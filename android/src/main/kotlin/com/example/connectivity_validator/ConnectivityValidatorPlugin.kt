@@ -31,8 +31,8 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
     private val executor = Executors.newSingleThreadExecutor()
     private var currentConnectivityTest: Future<*>? = null
     
-        // Periodic check interval (2 seconds) - balanced for real-time detection without battery drain
-        private val PERIODIC_CHECK_INTERVAL_MS = 2000L
+    // Periodic check interval (2 seconds) - balanced for real-time detection without battery drain
+    private val PERIODIC_CHECK_INTERVAL_MS = 2000L
     
     // Connectivity test timeout (500ms) - fast enough to not block, but reliable
     private val CONNECTIVITY_TEST_TIMEOUT_MS = 500L
