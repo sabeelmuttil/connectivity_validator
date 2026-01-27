@@ -1,0 +1,196 @@
+# Build Connectivity Validator Example
+name: connectivity_validator
+
+concurrency:
+  group: connectivity_validator_${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  pull_request:
+    paths:
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "example/**"
+      - ".github/workflows/connectivity_validator.yaml"
+      - "pubspec.yaml"
+      - "!**.md"
+      - "!**.gitignore"
+  push:
+    branches: ["master", "main"]
+    paths:
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "example/**"
+      - ".github/workflows/connectivity_validator.yaml"
+      - "pubspec.yaml"
+
+jobs:
+  analyze:
+    name: "Dart Analyzer"
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v5
+      
+      - name: "Setup Flutter"
+        uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+      
+      - name: "Install dependencies"
+        run: flutter pub get
+      
+      - name: "Run Dart Analyze"
+        uses: invertase/github-action-dart-analyzer@v3
+        with:
+          fatal-infos: false
+          fatal-warnings: true
+          annotate: true
+          working-directory: .
+
+  test:
+    name: "Unit Tests"
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v5
+      
+      - name: "Setup Flutter"
+        uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+      
+      - name: "Install dependencies"
+        run: flutter pub get
+      
+      - name: "Run tests"
+        run: flutter test
+
+  android_example_build:
+    name: "Android Example Build"
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v5
+      
+      - name: "Setup Flutter"
+        uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+      
+      - name: "Install dependencies"
+        run: |
+          flutter pub get
+          cd example && flutter pub get
+      
+      - name: "Build Android Example"
+        run: |
+          cd example
+          flutter build apk --debug
+
+  android_integration_test:
+    name: "Android Integration Test"
+    # Use non M1 machine till https://github.com/ReactiveCircus/android-emulator-runner/issues/350 is resolved
+    runs-on: macos-13
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        android-api-level: [21, 26, 31, 34]
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v5
+      
+      - name: "Setup Flutter"
+        uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+      
+      - name: "Install dependencies"
+        run: |
+          flutter pub get
+          cd example && flutter pub get
+      
+      - name: "Android Integration Test"
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.android-api-level }}
+          cores: 3
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          profile: Nexus 5X
+          script: |
+            cd example
+            flutter test integration_test/plugin_integration_test.dart
+
+  ios_example_build:
+    name: "iOS Example Build"
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v5
+      
+      - name: "Setup Flutter"
+        uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+      
+      - name: "Install dependencies"
+        run: |
+          flutter pub get
+          cd example && flutter pub get
+      
+      - name: "Install CocoaPods"
+        run: |
+          cd example/ios
+          pod install
+      
+      - name: "Build iOS Example"
+        run: |
+          cd example
+          flutter build ios --debug --no-codesign
+
+  ios_integration_test:
+    name: "iOS Integration Test"
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v5
+      
+      - name: "Setup Flutter"
+        uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+      
+      - name: "Install dependencies"
+        run: |
+          flutter pub get
+          cd example && flutter pub get
+      
+      - name: "Install CocoaPods"
+        run: |
+          cd example/ios
+          pod install
+      
+      - name: "Start Simulator"
+        uses: futureware-tech/simulator-action@v4
+        with:
+          model: 'iPhone 15'
+      
+      - name: "Run Integration Test"
+        run: |
+          cd example
+          flutter test integration_test/plugin_integration_test.dart
