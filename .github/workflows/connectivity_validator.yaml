@@ -99,8 +99,8 @@ jobs:
 
   android_integration_test:
     name: "Android Integration Test"
-    # Use non M1 machine till https://github.com/ReactiveCircus/android-emulator-runner/issues/350 is resolved
-    runs-on: macos-13
+    # Note: Using macos-14. If M1 issues occur, consider macos-15-intel
+    runs-on: macos-14
     timeout-minutes: 30
     strategy:
       fail-fast: false
