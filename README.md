@@ -1,4 +1,7 @@
 # connectivity_validator
+[![pub package](https://img.shields.io/pub/v/connectivity_validator.svg)](https://pub.dev/packages/connectivity_validator)
+[![pub points](https://img.shields.io/pub/points/connectivity_validator?color=2E8B57&label=pub%20points)](https://pub.dev/packages/connectivity_validator/score)
+[![connectivity_plus](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml/badge.svg)](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_plus.yaml)
 
 A Flutter plugin that provides **validated internet connectivity status** with real-time updates. Unlike basic connectivity checks, this plugin validates that the device has actual internet access (not just a network connection), detecting captive portals and ensuring the connection is truly functional.
 
@@ -6,7 +9,7 @@ A Flutter plugin that provides **validated internet connectivity status** with r
 
 - ✅ **Validated Connectivity**: Checks for real internet access, not just network connection
 - ✅ **Captive Portal Detection**: Detects when connected to WiFi but behind a captive portal
-- ✅ **Router Internet Loss Detection**: Detects when WiFi router loses internet while staying connected
+- ✅ **Router Internet Loss Detection**: Detects when the WiFi router loses internet while staying connected
 - ✅ **HTTPS Connectivity Testing**: Performs actual HTTPS requests to verify real internet access
 - ✅ **Smart Failure Handling**: Prevents ping-pong effects with intelligent failure counter
 - ✅ **Real-time Updates**: Stream-based API for continuous connectivity monitoring
@@ -14,6 +17,12 @@ A Flutter plugin that provides **validated internet connectivity status** with r
 - ✅ **Lightweight**: Zero dependencies, framework-agnostic
 - ✅ **Optimized**: Only emits updates when connectivity state actually changes
 - ✅ **Battery Efficient**: Smart caching and periodic checks balance accuracy with performance
+
+## Platform Support
+
+| Android | iOS |
+| :-----: | :-: | 
+|   ✅    |  ✅  |
 
 ## Installation
 
