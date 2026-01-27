@@ -21,7 +21,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.1
+  connectivity_validator: ^0.0.3
 ```
 
 Then run:

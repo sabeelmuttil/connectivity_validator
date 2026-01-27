@@ -4,14 +4,14 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'connectivity_validator'
-  s.version          = '0.0.1'
-  s.summary          = 'A new Flutter plugin project.'
+  s.version          = '0.0.3'
+  s.summary          = 'A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs.'
   s.description      = <<-DESC
-A new Flutter plugin project.
+A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/sabeelmuttil/connectivity_validator'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'Sabeel KM' => 'sabeelmuttil@gmail.com' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
