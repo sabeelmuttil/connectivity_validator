@@ -20,8 +20,10 @@ jobs:
 
       # Note: This workflow uses the latest stable version of Flutter.
       # You can specify other versions if desired, see documentation here:
-      # https://github.com/flutter/setup-flutter/blob/main/README.md
-      - uses: flutter/setup-flutter@v1
+      # https://github.com/flutter-actions/setup-flutter
+      - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
 
       - name: Install dependencies
         run: flutter pub get
