@@ -1,7 +1,8 @@
 # connectivity_validator
+
 [![pub package](https://img.shields.io/pub/v/connectivity_validator.svg)](https://pub.dev/packages/connectivity_validator)
 [![pub points](https://img.shields.io/pub/points/connectivity_validator?color=2E8B57&label=pub%20points)](https://pub.dev/packages/connectivity_validator/score)
-[![connectivity_plus](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml/badge.svg)](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_plus.yaml)
+[![CI](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml/badge.svg)](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml)
 
 A Flutter plugin that provides **validated internet connectivity status** with real-time updates. Unlike basic connectivity checks, this plugin validates that the device has actual internet access (not just a network connection), detecting captive portals and ensuring the connection is truly functional.
 
@@ -14,15 +15,15 @@ A Flutter plugin that provides **validated internet connectivity status** with r
 - ✅ **Smart Failure Handling**: Prevents ping-pong effects with intelligent failure counter
 - ✅ **Real-time Updates**: Stream-based API for continuous connectivity monitoring
 - ✅ **Cross-platform**: Works on both Android and iOS with identical behavior
-- ✅ **Lightweight**: Zero dependencies, framework-agnostic
+- ✅ **Lightweight**: Minimal dependencies, framework-agnostic
 - ✅ **Optimized**: Only emits updates when connectivity state actually changes
 - ✅ **Battery Efficient**: Smart caching and periodic checks balance accuracy with performance
 
 ## Platform Support
 
-| Android | iOS |
-| :-----: | :-: | 
-|   ✅    |  ✅  |
+| Android (API 24+) | iOS (12.0+) |
+| :---------------: | :---------: |
+|        ✅         |     ✅      |
 
 ## Installation
 
@@ -30,7 +31,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.4
+  connectivity_validator: ^0.0.5
 ```
 
 Then run:
@@ -65,7 +66,7 @@ The plugin uses `ConnectivityManager` with `NET_CAPABILITY_VALIDATED` and HTTPS 
 
 No additional setup required. The plugin uses `NWPathMonitor` with `.satisfied` status and HTTPS connectivity testing to detect validated connectivity.
 
-**Note**: The plugin supports both CocoaPods and Swift Package Manager (SPM). Flutter will automatically use the appropriate dependency manager based on your project configuration.
+**Note**: The plugin supports **Swift Package Manager (SPM)** (recommended) and **CocoaPods**. Flutter will automatically use the appropriate dependency manager based on your project configuration. No `pod install` is needed when using SPM.
 
 ## Basic Usage
 
@@ -573,7 +574,8 @@ The plugin includes smart failure handling to prevent this:
 ### iOS build issues
 
 - Ensure your iOS deployment target is 12.0 or higher (required for `NWPathMonitor`)
-- Run `pod install` in the `ios` directory if needed
+- **Swift Package Manager (recommended)**: Flutter uses SPM by default for plugin resolution; no extra steps needed. If the plugin fails to resolve, run `flutter clean` then `flutter pub get`.
+- **CocoaPods (legacy)**: If your project uses CocoaPods for this plugin, run `pod install` in the `ios` directory.
 
 ## Contributing
 
