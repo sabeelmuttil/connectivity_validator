@@ -132,6 +132,8 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             cd example
+            flutter clean
+            flutter pub get
             flutter test integration_test/plugin_integration_test.dart
 
   ios_example_build:
@@ -193,4 +195,6 @@ jobs:
       - name: "Run Integration Test"
         run: |
           cd example
+          flutter clean
+          flutter pub get
           flutter test integration_test/plugin_integration_test.dart
