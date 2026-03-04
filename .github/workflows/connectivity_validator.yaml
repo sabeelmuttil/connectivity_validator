@@ -128,8 +128,10 @@ jobs:
           cores: 3
           target: google_apis
           arch: arm64-v8a
-          force-avd-creation: false
+          force-avd-creation: true
           profile: Nexus 5X
+          # Disable HVF (macOS hypervisor) — not available on hosted runners; use software emulation.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-accel
           script: |
             cd example
             flutter test integration_test/plugin_integration_test.dart
