@@ -14,10 +14,13 @@ import java.util.concurrent.Future
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 
-class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
+class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, MethodChannel.MethodCallHandler {
     private lateinit var context: Context
     private var eventChannel: EventChannel? = null
+    private var methodChannel: MethodChannel? = null
 
     // Logic variables from your image
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -52,11 +55,39 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler {
 
         eventChannel = EventChannel(binding.binaryMessenger, "connectivity_validator/status")
         eventChannel?.setStreamHandler(this)
+        methodChannel = MethodChannel(binding.binaryMessenger, "connectivity_validator/method")
+        methodChannel?.setMethodCallHandler(this)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         eventChannel?.setStreamHandler(null)
         eventChannel = null
+        methodChannel?.setMethodCallHandler(null)
+        methodChannel = null
+    }
+
+    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "getStatus") {
+            executor.submit {
+                try {
+                    val isOnline = getCurrentConnectivityStatus()
+                    mainHandler.post { result.success(isOnline) }
+                } catch (e: Exception) {
+                    mainHandler.post { result.error("CHECK_FAILED", e.message, null) }
+                }
+            }
+        } else {
+            result.notImplemented()
+        }
+    }
+
+    /** One-time check: current network capabilities + HTTPS validation. Safe to call without stream. */
+    private fun getCurrentConnectivityStatus(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val caps = connectivityManager.getNetworkCapabilities(network) ?: return false
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return false
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) return false
+        return testActualConnectivity(network)
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {

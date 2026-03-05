@@ -4,90 +4,85 @@ import 'package:connectivity_validator/connectivity_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
-/// Best Practice: NetworkStatusController for real-time connectivity monitoring
-///
-/// This controller demonstrates the recommended way to use connectivity_validator:
-/// - Properly manages stream subscription lifecycle
-/// - Handles errors gracefully
-/// - Provides reactive state for UI updates
-/// - Automatically cleans up resources
+/// NetworkStatusController with both live (stream) and on-demand (button) checks.
 class NetworkStatusController extends GetxController {
-  // Observable state - automatically notifies listeners when changed
+  // —— Live (stream) state ——
+  var liveIsOffline = false.obs;
+  var liveLastUpdateTime = DateTime.now().obs;
+  var liveHasError = false.obs;
+  var liveErrorMessage = ''.obs;
+
+  // —— Manual (button) state ——
   var isOffline = false.obs;
   var lastUpdateTime = DateTime.now().obs;
   var hasError = false.obs;
   var errorMessage = ''.obs;
+  var isChecking = false.obs;
+  var hasChecked = false.obs;
 
-  StreamSubscription? _subscription;
+  StreamSubscription<bool>? _liveSubscription;
   final ConnectivityValidator _validator = ConnectivityValidator();
 
   @override
   void onInit() {
     super.onInit();
-    _startListening();
+    _startLiveListening();
   }
 
   @override
   void onClose() {
-    // CRITICAL: Always cancel subscription to prevent memory leaks
-    _subscription?.cancel();
-    _subscription = null;
+    _liveSubscription?.cancel();
+    _liveSubscription = null;
     super.onClose();
   }
 
-  /// Best Practice: Start listening to connectivity changes
-  ///
-  /// This method:
-  /// 1. Listens to the stream for real-time updates
-  /// 2. Handles errors gracefully
-  /// 3. Updates reactive state immediately
-  /// 4. Tracks last update time for debugging
-  void _startListening() {
+  /// Live: listen to stream for real-time updates.
+  void _startLiveListening() {
     try {
-      // Listen to the EventChannel stream for real-time connectivity updates
-      _subscription = _validator.onConnectivityChanged.listen(
+      _liveSubscription = _validator.onConnectivityChanged.listen(
         (isOnline) {
-          // Debug: Print to console to verify stream is working
-
-          // Update state immediately when connectivity changes
-          isOffline.value = !isOnline;
-          lastUpdateTime.value = DateTime.now();
-          hasError.value = false;
-          errorMessage.value = '';
+          liveIsOffline.value = !isOnline;
+          liveLastUpdateTime.value = DateTime.now();
+          liveHasError.value = false;
+          liveErrorMessage.value = '';
         },
-        onError: (error) {
-          // Handle stream errors gracefully
-          debugPrint('❌ Connectivity stream error: $error');
-          hasError.value = true;
-          errorMessage.value = error.toString();
-          // Assume offline on error to be safe
-          isOffline.value = true;
-          lastUpdateTime.value = DateTime.now();
+        onError: (Object error) {
+          debugPrint('Live connectivity stream error: $error');
+          liveHasError.value = true;
+          liveErrorMessage.value = error.toString();
+          liveIsOffline.value = true;
+          liveLastUpdateTime.value = DateTime.now();
         },
-        cancelOnError: false, // Keep listening even after errors
+        cancelOnError: false,
       );
     } catch (e) {
-      // Handle initialization errors
-      debugPrint('❌ Failed to start listening: $e');
-      hasError.value = true;
-      errorMessage.value = 'Failed to start listening: $e';
-      isOffline.value = true;
+      debugPrint('Failed to start live listening: $e');
+      liveHasError.value = true;
+      liveErrorMessage.value = 'Failed to start: $e';
+      liveIsOffline.value = true;
     }
   }
 
-  /// Manually refresh connectivity status
-  /// Useful for testing or manual checks
-  @override
-  Future<void> refresh() async {
+  /// Manual: check once when the user taps the button.
+  Future<void> checkNow() async {
+    if (isChecking.value) return;
+    isChecking.value = true;
+    hasError.value = false;
+    errorMessage.value = '';
     try {
-      final isOnline = await _validator.onConnectivityChanged.first;
+      final isOnline = await _validator.getConnectivityStatus;
       isOffline.value = !isOnline;
       lastUpdateTime.value = DateTime.now();
-      hasError.value = false;
-      errorMessage.value = '';
+      hasChecked.value = true;
     } catch (e) {
+      debugPrint('Connectivity check failed: $e');
       hasError.value = true;
-      errorMessage.value = 'Refresh failed: $e';
+      errorMessage.value = e.toString();
+      isOffline.value = true;
+      lastUpdateTime.value = DateTime.now();
+      hasChecked.value = true;
+    } finally {
+      isChecking.value = false;
     }
   }
 }

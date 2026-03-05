@@ -17,9 +17,68 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
     private let PERIODIC_CHECK_INTERVAL: TimeInterval = 2.0 // 2 seconds
 
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterEventChannel(name: "connectivity_validator/status", binaryMessenger: registrar.messenger())
+        let eventChannel = FlutterEventChannel(name: "connectivity_validator/status", binaryMessenger: registrar.messenger())
         let instance = ConnectivityValidatorPlugin()
-        channel.setStreamHandler(instance)
+        eventChannel.setStreamHandler(instance)
+        
+        let methodChannel = FlutterMethodChannel(name: "connectivity_validator/method", binaryMessenger: registrar.messenger())
+        methodChannel.setMethodCallHandler(instance.handleMethodCall)
+    }
+
+    private func handleMethodCall(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard call.method == "getStatus" else {
+            result(FlutterMethodNotImplemented)
+            return
+        }
+        queue.async { [weak self] in
+            self?.getCurrentConnectivityStatus { isOnline in
+                DispatchQueue.main.async {
+                    result(isOnline)
+                }
+            }
+        }
+    }
+
+    /// One-time check: path status + HTTPS validation. Safe to call without stream.
+    /// Uses pathUpdateHandler because currentPath is not reliable until the monitor has run.
+    private func getCurrentConnectivityStatus(completion: @escaping (Bool) -> Void) {
+        let oneShotMonitor = NWPathMonitor()
+        oneShotMonitor.pathUpdateHandler = { [weak oneShotMonitor] path in
+            oneShotMonitor?.cancel()
+            guard path.status == .satisfied else {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            // Verify with HTTPS
+            let urls = [
+                "https://www.google.com/generate_204",
+                "https://connectivitycheck.gstatic.com/generate_204",
+                "https://clients3.google.com/generate_204"
+            ]
+            self.testConnectivityOneShot(urls: urls, index: 0) { isOnline in
+                DispatchQueue.main.async { completion(isOnline) }
+            }
+        }
+        oneShotMonitor.start(queue: queue)
+    }
+
+    private func testConnectivityOneShot(urls: [String], index: Int, completion: @escaping (Bool) -> Void) {
+        guard index < urls.count, let url = URL(string: urls[index]) else {
+            completion(false)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 0.5
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let task = URLSession.shared.dataTask(with: request) { _, response, _ in
+            if let http = response as? HTTPURLResponse, (http.statusCode == 204 || (200..<400).contains(http.statusCode)) {
+                completion(true)
+                return
+            }
+            self.testConnectivityOneShot(urls: urls, index: index + 1, completion: completion)
+        }
+        task.resume()
     }
 
     public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {

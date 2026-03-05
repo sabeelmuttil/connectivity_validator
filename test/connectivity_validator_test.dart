@@ -2,6 +2,7 @@ import 'package:connectivity_validator/connectivity_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('ConnectivityValidator creates instance correctly', () {
     ConnectivityValidator connectivityValidator = ConnectivityValidator();
     expect(connectivityValidator, isA<ConnectivityValidator>());
@@ -21,5 +22,11 @@ void main() {
 
     expect(stream1, isA<Stream<bool>>());
     expect(stream2, isA<Stream<bool>>());
+  });
+
+  test('checkConnectivity returns a Future<bool>', () {
+    ConnectivityValidator connectivityValidator = ConnectivityValidator();
+    final result = connectivityValidator.getConnectivityStatus;
+    expect(result, isA<Future<bool>>());
   });
 }
