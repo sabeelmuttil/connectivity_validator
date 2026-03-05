@@ -1,6 +1,7 @@
-import 'package:connectivity_validator_example/network_status_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import 'network_status_controller.dart';
 
 /// Best Practice Example: Real-time Connectivity Monitoring
 ///
@@ -153,7 +154,7 @@ class ConnectivityStatusPage extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Colors.green,
                         shape: BoxShape.circle,
                       ),
@@ -179,17 +180,17 @@ class ConnectivityStatusPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.blue[200]!),
                   ),
-                  child: Column(
+                  child: const Column(
                     children: [
-                      const Text(
+                      Text(
                         '💡 Test Real-time Updates',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: 8),
+                      Text(
                         'Disconnect your router\'s internet while WiFi remains connected. The status should update within 1-2 seconds.',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                         textAlign: TextAlign.center,

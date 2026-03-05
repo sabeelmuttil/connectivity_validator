@@ -1,5 +1,5 @@
 PODS:
-  - connectivity_validator (0.0.3):
+  - connectivity_validator (0.0.5):
     - Flutter
   - Flutter (1.0.0)
   - integration_test (0.0.1):
@@ -19,7 +19,7 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
-  connectivity_validator: bf4e7fc18738fca085f5a7adac35d8b556d333d6
+  connectivity_validator: a19270922562a2a8b542e74c4ad912d9de50276c
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
 

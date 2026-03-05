@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "swift: Describe Package",
+      "type": "shell",
+      "command": "cd \"${workspaceFolder}/ios/connectivity_validator\" && swift package describe --type json",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {}
+      },
+      "group": "none",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Swift: Describe iOS Plugin Package",
+      "type": "shell",
+      "command": "cd \"${workspaceFolder}/ios/connectivity_validator\" && swift package describe --type json",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "none"
+    }
+  ]
+}
