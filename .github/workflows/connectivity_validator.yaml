@@ -130,11 +130,7 @@ jobs:
           force-avd-creation: true
           profile: Nexus 5X
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: |
-            cd example
-            flutter clean
-            flutter pub get
-            flutter test integration_test/plugin_integration_test.dart
+          script: cd example && flutter clean && flutter pub get && flutter test integration_test/plugin_integration_test.dart
 
   ios_example_build:
     name: "iOS Example Build"
