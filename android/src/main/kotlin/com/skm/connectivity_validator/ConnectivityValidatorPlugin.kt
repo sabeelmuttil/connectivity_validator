@@ -100,9 +100,7 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
         val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
         val initialCheck = hasInternet && hasValidated
         
-        // Send initial state based on capabilities
-        // Note: On initial load, we trust capabilities first, then verify with HTTPS
-        sendUpdate(events, initialCheck)
+        sendUpdate(events, initialCheck, force = true)
         
         // Verify with HTTPS test if capabilities say online
         // This ensures we catch stale VALIDATED flags on initial load
@@ -121,15 +119,10 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
                 
-                // If HTTPS test has determined we're offline, don't override with stale capabilities
-                if (quickCheck && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                    // Don't send update - keep current OFFLINE state from HTTPS test
-                } else {
-                    // Send immediate update for responsiveness
-                    sendUpdate(events, quickCheck)
-                }
+                // Always send capability-based state so live UI updates immediately
+                sendUpdate(events, quickCheck, force = true)
                 
-                // Verify with HTTPS test if capabilities say online
+                // Verify with HTTPS test if capabilities say online (may override to offline later)
                 if (quickCheck) {
                     verifyConnectivityAsync(network, forceFresh = true)
                 } else {
@@ -141,59 +134,41 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
             }
 
             override fun onLost(network: Network) {
-                // Network was lost - immediately check if any other network is available
                 val activeNetwork = connectivityManager.activeNetwork
                 if (activeNetwork != null) {
                     val caps = connectivityManager.getNetworkCapabilities(activeNetwork)
                     val hasInternet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                     val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                     val quickCheck = hasInternet && hasValidated
-                    
-                    // Trust Android's validated capabilities
-                    sendUpdate(events, quickCheck)
+                    sendUpdate(events, quickCheck, force = true)
                 } else {
-                    // No active network, definitely offline
-                    sendUpdate(events, false)
+                    sendUpdate(events, false, force = true)
                 }
-                
-                // Continue periodic checks to detect if another network takes over
                 startPeriodicCheck()
             }
 
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                 // Capabilities changed - this is the key callback for validated connectivity
-                // Invalidate cache when capabilities change to force fresh connectivity test
                 invalidateConnectivityCache()
                 
-                // For immediate response, check capabilities first (non-blocking)
                 val activeNetwork = connectivityManager.activeNetwork
                 val capsToCheck = if (network == activeNetwork) caps else {
                     connectivityManager.getNetworkCapabilities(activeNetwork)
                 }
                 
-                // Quick capability check for immediate update (non-blocking)
                 val hasInternet = capsToCheck?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                 val hasValidated = capsToCheck?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
                 
-                // If HTTPS test has determined we're offline, don't override with stale capabilities
-                if (quickCheck && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                    // Don't send update - keep current OFFLINE state from HTTPS test
-                } else {
-                    // Send immediate update based on capabilities for responsiveness
-                    sendUpdate(events, quickCheck)
-                }
+                // Always send capability-based state so live UI updates immediately
+                sendUpdate(events, quickCheck, force = true)
                 
-                // If capabilities say online, verify with HTTPS test in background
-                // This catches cases where VALIDATED flag is stale (router lost internet)
                 if (quickCheck && activeNetwork != null) {
                     verifyConnectivityAsync(activeNetwork, forceFresh = true)
                 } else {
-                    // Capabilities say offline - reset failure counter
                     consecutiveHttpsFailures = 0
                 }
                 
-                // Restart periodic checks after capability change
                 startPeriodicCheck()
             }
 
@@ -212,17 +187,12 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
                 
-                // Send immediate update based on capabilities
-                sendUpdate(events, quickCheck)
-                
-                // Verify with HTTPS test if capabilities say online
+                sendUpdate(events, quickCheck, force = true)
                 if (quickCheck && activeNetwork != null) {
                     verifyConnectivityAsync(activeNetwork, forceFresh = true)
                 } else {
                     consecutiveHttpsFailures = 0
                 }
-                
-                // Restart periodic checks
                 startPeriodicCheck()
             }
         }
@@ -260,18 +230,9 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                     val hasValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                     
                     if (hasInternet && hasValidated) {
-                        // Capabilities say online, but check if HTTPS test has determined we're offline
-                        // If we have multiple HTTPS failures, trust HTTPS over stale capabilities
-                        if (consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                            // HTTPS test says offline - don't override it with stale capabilities
-                            // Don't send update - keep current OFFLINE state
-                        } else {
-                            // No HTTPS failures or only 1 failure - trust capabilities
-                            sendUpdate(events, true, force = false)
-                        }
+                        // Send capability-based online so live UI stays in sync
+                        sendUpdate(events, true, force = true)
                         
-                        // Always verify with HTTPS test periodically to catch stale VALIDATED flag
-                        // Only verify every 5 seconds to balance accuracy with performance
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastConnectivityTestTime > 5000) {
                             invalidateConnectivityCache()
