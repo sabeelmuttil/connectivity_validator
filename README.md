@@ -19,7 +19,7 @@ Flutter plugin for **validated** internet connectivity: real internet access, no
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.5
+  connectivity_validator: ^0.0.6
 ```
 
 ```bash
@@ -74,6 +74,18 @@ validator.onConnectivityChanged.listen((isOnline) {
 });
 ```
 
+**Live status (stream) + manual check (on-demand):**
+
+```dart
+final validator = ConnectivityValidator();
+
+// Live updates
+validator.onConnectivityChanged.listen((isOnline) => /* update UI */);
+
+// On-demand check (e.g. button tap)
+final isOnline = await validator.getConnectivityStatus;
+```
+
 **In UI (e.g. StreamBuilder):**
 
 ```dart
@@ -87,6 +99,12 @@ StreamBuilder<bool>(
 )
 ```
 
+**Run the example:**
+
+```bash
+cd example && flutter pub get && flutter run
+```
+
 ## Documentation
 
 - [State management (GetX, Provider, Riverpod, BLoC, ValueNotifier)](doc/state-management.md)
@@ -94,12 +112,6 @@ StreamBuilder<bool>(
 - [How it works](doc/how-it-works.md)
 - [Best practices](doc/best-practices.md)
 - [Troubleshooting](doc/troubleshooting.md)
-
-## Example app
-
-```bash
-cd example && flutter pub get && flutter run
-```
 
 ## Contributing
 

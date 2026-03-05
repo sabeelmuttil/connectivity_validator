@@ -1,6 +1,6 @@
 name: connectivity_validator
 description: "A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs."
-version: 0.0.5
+version: 0.0.6
 homepage: https://github.com/sabeelmuttil/connectivity_validator
 repository: https://github.com/sabeelmuttil/connectivity_validator
 
