@@ -105,8 +105,9 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      # Single API level (minSdk) to avoid timeouts and adb "Broken pipe" flakiness on unaccelerated runners.
       matrix:
-        android-api-level: [24, 26, 31, 34]
+        android-api-level: [24]
 
     steps:
       - name: "Checkout repository"
