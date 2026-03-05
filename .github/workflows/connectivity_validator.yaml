@@ -100,8 +100,9 @@ jobs:
   android_integration_test:
     name: "Android Integration Test"
     # Run on Ubuntu so the emulator can use KVM; macOS ARM runners lack HVF (nested virtualization).
+    # Without KVM, emulator boot + build + install can exceed 30 min; allow 60 min.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
