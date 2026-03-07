@@ -1,8 +1,21 @@
 import 'package:connectivity_validator/connectivity_validator.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('connectivity_validator/method'),
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'getStatus') return true;
+        return null;
+      },
+    );
+  });
+
   test('ConnectivityValidator creates instance correctly', () {
     ConnectivityValidator connectivityValidator = ConnectivityValidator();
     expect(connectivityValidator, isA<ConnectivityValidator>());

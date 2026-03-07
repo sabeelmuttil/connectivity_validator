@@ -2,6 +2,8 @@ import 'package:connectivity_validator/connectivity_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('ConnectivityValidator creates instance correctly', () {
     ConnectivityValidator validator = ConnectivityValidator();
     expect(validator, isA<ConnectivityValidator>());
