@@ -4,7 +4,8 @@ import 'package:connectivity_validator/connectivity_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
-/// NetworkStatusController with both live (stream) and on-demand (button) checks.
+/// NetworkStatusController with both live (stream) and on-demand (button)
+/// checks.
 class NetworkStatusController extends GetxController {
   // —— Live (stream) state ——
   var liveIsOffline = false.obs;

@@ -15,8 +15,9 @@ void main() {
 
   testWidgets('connectivity stream emits boolean', (WidgetTester tester) async {
     final ConnectivityValidator plugin = ConnectivityValidator();
-    // The plugin emits true = validated internet, false = no internet/captive portal.
-    // CI emulators may have either state; we only assert the stream works and emits a bool.
+    // The plugin emits true = validated internet, false = no
+    // internet/captive portal. CI emulators may have either state;
+    // we only assert the stream works and emits a bool.
     final bool isConnected = await plugin.onConnectivityChanged.first;
     expect(isConnected, isA<bool>());
   });
