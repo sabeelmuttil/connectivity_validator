@@ -13,6 +13,25 @@ Flutter plugin for **validated** internet connectivity: real internet access, no
 - Real-time stream (`onConnectivityChanged`)
 - Android (API 24+) and iOS (12.0+)
 
+## Why connectivity_validator?
+
+Most connectivity packages tell you whether a network *interface* is up — not whether
+you can actually reach the internet. So your app shows “online” while stuck behind a
+hotel WiFi login page, or when the router has lost its upstream connection.
+
+`connectivity_validator` answers the question you actually care about: **can the device
+reach the internet right now?** It combines native OS validation
+(`NET_CAPABILITY_VALIDATED` on Android, `NWPathMonitor` on iOS) with a lightweight HTTPS
+probe to `generate_204` endpoints, so a captive portal or dead router reports as offline.
+
+| | `connectivity_plus` | `internet_connection_checker` | **connectivity_validator** |
+|---|:---:|:---:|:---:|
+| Network interface up | ✅ | ✅ | ✅ |
+| Real internet reachable | ❌ | ✅ | ✅ |
+| Captive portal detected | ❌ | ❌ | ✅ |
+| Native OS validation | ❌ | ❌ | ✅ |
+| Real-time stream | ✅ | ✅ | ✅ |
+
 ## Installation
 
 **pubspec.yaml**

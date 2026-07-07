@@ -12,12 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - False "offline" results on high-latency mobile networks by increasing the HTTPS probe timeout from 500ms to 2s (Android and iOS)
 - Flaky online/offline toggling with debounced offline reporting: requires 2 independent offline signals before emitting `false`; unambiguous offline (no active network) still emits immediately
 - Stale `NET_CAPABILITY_VALIDATED` (Android) and `NWPath` `.satisfied` (iOS) no longer report online during periodic checks — HTTPS probe result is authoritative
-- Captive portal false positives on iOS: only HTTP 204 from `generate_204` endpoints counts as validated connectivity
+- Captive portal false positives: only HTTP 204 from `generate_204` endpoints counts as validated connectivity (Android and iOS)
 - Android resource leak on engine detach (network callback and executor now cleaned up on hot restart)
 
 ### Changed
 
 - `onConnectivityChanged` stream filters consecutive duplicate values via `.distinct()` so listeners only see actual state changes
+- Added a Cloudflare (`cp.cloudflare.com/generate_204`) probe fallback so validation works in regions where Google endpoints are blocked
+- Added pub.dev `topics` and a clearer package description for discoverability
 
 ## [0.0.6] - 2026-03-05
 

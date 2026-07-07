@@ -1,8 +1,16 @@
 name: connectivity_validator
-description: "A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs."
+description: "Validated internet connectivity for Flutter: detects real internet access (not just a network link) and captive portals, using native Android & iOS APIs."
 version: 0.0.7
 homepage: https://github.com/sabeelmuttil/connectivity_validator
 repository: https://github.com/sabeelmuttil/connectivity_validator
+issue_tracker: https://github.com/sabeelmuttil/connectivity_validator/issues
+
+topics:
+  - connectivity
+  - network
+  - internet
+  - captive-portal
+  - offline
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -29,4 +37,6 @@ flutter:
         package: com.skm.connectivity_validator
         pluginClass: ConnectivityValidatorPlugin
       ios:
+        pluginClass: ConnectivityValidatorPlugin
+      macos:
         pluginClass: ConnectivityValidatorPlugin

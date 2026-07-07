@@ -62,7 +62,7 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
             let urls = [
                 "https://www.google.com/generate_204",
                 "https://connectivitycheck.gstatic.com/generate_204",
-                "https://clients3.google.com/generate_204"
+                "https://cp.cloudflare.com/generate_204" // Cloudflare fallback (Google-blocked regions)
             ]
             self.testConnectivityOneShot(urls: urls, index: 0) { isOnline in
                 DispatchQueue.main.async { completion(isOnline) }
@@ -179,7 +179,7 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         let testUrls = [
             "https://www.google.com/generate_204",
             "https://connectivitycheck.gstatic.com/generate_204",
-            "https://clients3.google.com/generate_204"
+            "https://cp.cloudflare.com/generate_204" // Cloudflare fallback (Google-blocked regions)
         ]
         
         // Try each URL sequentially - if any succeeds, we have connectivity

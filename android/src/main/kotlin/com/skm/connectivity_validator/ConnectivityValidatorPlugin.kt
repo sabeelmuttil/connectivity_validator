@@ -386,11 +386,12 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
 
     private fun testActualConnectivity(network: Network): Boolean {
         // Test actual connectivity using HTTPS endpoints (required for Android 9+)
-        // Android 9+ blocks cleartext HTTP by default, so we use HTTPS
+        // Android 9+ blocks cleartext HTTP by default, so we use HTTPS.
+        // Cloudflare is included as a fallback for regions where Google is blocked.
         val testUrls = listOf(
             "https://www.google.com/generate_204",  // Google's HTTPS connectivity check
             "https://connectivitycheck.gstatic.com/generate_204",  // Android's HTTPS connectivity check
-            "https://clients3.google.com/generate_204"  // Alternative Google HTTPS endpoint
+            "https://cp.cloudflare.com/generate_204"  // Cloudflare fallback (Google-blocked regions)
         )
         
         // Try each URL - if any succeeds, we have connectivity
