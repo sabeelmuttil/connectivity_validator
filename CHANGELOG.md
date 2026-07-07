@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-07-07
+
+### Fixed
+
+- False "offline" results on high-latency mobile networks by increasing the HTTPS probe timeout from 500ms to 2s (Android and iOS)
+- Flaky online/offline toggling with debounced offline reporting: requires 2 independent offline signals before emitting `false`; unambiguous offline (no active network) still emits immediately
+- Stale `NET_CAPABILITY_VALIDATED` (Android) and `NWPath` `.satisfied` (iOS) no longer report online during periodic checks — HTTPS probe result is authoritative
+- Captive portal false positives on iOS: only HTTP 204 from `generate_204` endpoints counts as validated connectivity
+- Android resource leak on engine detach (network callback and executor now cleaned up on hot restart)
+
+### Changed
+
+- `onConnectivityChanged` stream filters consecutive duplicate values via `.distinct()` so listeners only see actual state changes
+
 ## [0.0.6] - 2026-03-05
 
 ### Added

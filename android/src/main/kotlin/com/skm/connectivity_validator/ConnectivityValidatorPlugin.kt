@@ -37,17 +37,18 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
     // Periodic check interval (2 seconds) - balanced for real-time detection without battery drain
     private val PERIODIC_CHECK_INTERVAL_MS = 2000L
     
-    // Connectivity test timeout (500ms) - fast enough to not block, but reliable
-    private val CONNECTIVITY_TEST_TIMEOUT_MS = 500L
-    
+    // Connectivity test timeout - must cover a full TLS handshake on slow mobile
+    // networks; 500ms caused false "offline" results on high-latency connections
+    private val CONNECTIVITY_TEST_TIMEOUT_MS = 2000L
+
     // Cache connectivity test results for 500ms to avoid too many HTTP requests
     // But periodic checks always force fresh tests
     private val CONNECTIVITY_TEST_CACHE_MS = 500L
-    
-    // Track consecutive HTTPS test failures to prevent ping-pong
-    // Only override capabilities if we get multiple failures in a row
-    private var consecutiveHttpsFailures = 0
-    private val REQUIRED_FAILURES_TO_OVERRIDE = 2  // Need 2 failures before overriding capabilities
+
+    /// Require this many separate "offline" signals before emitting false (reduces false offline).
+    /// A missing network is emitted immediately; this debounce only applies to ambiguous signals.
+    private val REQUIRED_OFFLINE_SIGNALS = 2
+    private var pendingOfflineSignals = 0
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
@@ -60,10 +61,14 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        // The engine can detach without onCancel being called (e.g. hot restart),
+        // so release everything here to avoid leaking the network callback and handler
+        onCancel(null)
         eventChannel?.setStreamHandler(null)
         eventChannel = null
         methodChannel?.setMethodCallHandler(null)
         methodChannel = null
+        executor.shutdownNow()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -100,14 +105,13 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
         val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
         val initialCheck = hasInternet && hasValidated
         
-        sendUpdate(events, initialCheck, force = true)
+        pendingOfflineSignals = 0
+        emitToFlutter(events, initialCheck, force = true)
         
         // Verify with HTTPS test if capabilities say online
         // This ensures we catch stale VALIDATED flags on initial load
         if (network != null && initialCheck) {
             verifyConnectivityAsync(network, forceFresh = true)
-        } else {
-            consecutiveHttpsFailures = 0
         }
 
         // 2. Define the callback
@@ -119,16 +123,17 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
                 
-                // Always send capability-based state so live UI updates immediately
-                sendUpdate(events, quickCheck, force = true)
-                
+                if (quickCheck) {
+                    reportOnline(events)
+                } else {
+                    reportOfflineCandidate(events)
+                }
+
                 // Verify with HTTPS test if capabilities say online (may override to offline later)
                 if (quickCheck) {
                     verifyConnectivityAsync(network, forceFresh = true)
-                } else {
-                    consecutiveHttpsFailures = 0
                 }
-                
+
                 // Start periodic checks when network is available
                 startPeriodicCheck()
             }
@@ -140,9 +145,14 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                     val hasInternet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                     val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                     val quickCheck = hasInternet && hasValidated
-                    sendUpdate(events, quickCheck, force = true)
+                    if (quickCheck) {
+                        reportOnline(events)
+                    } else {
+                        reportOfflineCandidate(events)
+                    }
                 } else {
-                    sendUpdate(events, false, force = true)
+                    // No network left at all — unambiguous, skip the debounce
+                    reportOfflineNow(events)
                 }
                 startPeriodicCheck()
             }
@@ -159,16 +169,17 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasInternet = capsToCheck?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                 val hasValidated = capsToCheck?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
-                
-                // Always send capability-based state so live UI updates immediately
-                sendUpdate(events, quickCheck, force = true)
-                
+
+                if (quickCheck) {
+                    reportOnline(events)
+                } else {
+                    reportOfflineCandidate(events)
+                }
+
                 if (quickCheck && activeNetwork != null) {
                     verifyConnectivityAsync(activeNetwork, forceFresh = true)
-                } else {
-                    consecutiveHttpsFailures = 0
                 }
-                
+
                 startPeriodicCheck()
             }
 
@@ -186,12 +197,14 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasInternet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                 val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
-                
-                sendUpdate(events, quickCheck, force = true)
+
+                if (quickCheck) {
+                    reportOnline(events)
+                } else {
+                    reportOfflineCandidate(events)
+                }
                 if (quickCheck && activeNetwork != null) {
                     verifyConnectivityAsync(activeNetwork, forceFresh = true)
-                } else {
-                    consecutiveHttpsFailures = 0
                 }
                 startPeriodicCheck()
             }
@@ -224,30 +237,29 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 // This is important because Android might not immediately update NET_CAPABILITY_VALIDATED
                 val network = connectivityManager.activeNetwork
                 val caps = network?.let { connectivityManager.getNetworkCapabilities(it) }
-                
+
                 if (network != null && caps != null) {
                     val hasInternet = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     val hasValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                    
+
                     if (hasInternet && hasValidated) {
-                        // Send capability-based online so live UI stays in sync
-                        sendUpdate(events, true, force = true)
-                        
+                        // Don't report online from capabilities alone here: VALIDATED can stay
+                        // stale after the router loses upstream internet, and reporting online
+                        // would reset the offline debounce and mask HTTPS probe failures.
+                        // The probe result (verifyConnectivityAsync) is authoritative.
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastConnectivityTestTime > 5000) {
                             invalidateConnectivityCache()
                             verifyConnectivityAsync(network, forceFresh = true)
                         }
                     } else {
-                        // No capabilities, definitely offline - send update immediately
-                        consecutiveHttpsFailures = 0  // Reset failure counter
-                        sendUpdate(events, false, force = true)
+                        reportOfflineCandidate(events)
                     }
                 } else {
-                    // No network, offline - send update immediately with force
-                    sendUpdate(events, false, force = true)
+                    // No active network — unambiguous, skip the debounce
+                    reportOfflineNow(events)
                 }
-                
+
                 // Schedule next check - ensure it always runs
                 mainHandler.postDelayed(this, PERIODIC_CHECK_INTERVAL_MS)
             }
@@ -265,8 +277,8 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
         if (!forceFresh) {
             val currentTime = System.currentTimeMillis()
             if (currentTime - lastConnectivityTestTime < CONNECTIVITY_TEST_CACHE_MS) {
-                // Use cached result - but still send update to ensure stream is active
-                sendUpdate(events, lastConnectivityTestResult, force = false)
+                // Replay last probe without stacking debounce (avoids cache hammering offline counter).
+                emitToFlutter(events, lastConnectivityTestResult, force = false)
                 return
             }
         }
@@ -278,39 +290,18 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 lastConnectivityTestTime = System.currentTimeMillis()
                 lastConnectivityTestResult = result
                 
-                val currentState = lastState ?: false
-                
                 if (result) {
-                    // HTTPS test succeeded - reset failure counter and trust it
-                    consecutiveHttpsFailures = 0
-                    if (!currentState) {
-                        // HTTPS says online but we're showing offline - update immediately
-                        mainHandler.post {
-                            sendUpdate(events, true, force = true)
-                        }
+                    mainHandler.post {
+                        reportOnline(events)
                     }
                 } else {
-                    // HTTPS test failed - increment failure counter
-                    consecutiveHttpsFailures++
-                    
-                    // Only override capabilities if we have multiple consecutive failures
-                    // This prevents ping-pong from single test failures
-                    if (currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                        mainHandler.post {
-                            sendUpdate(events, false, force = true)
-                        }
+                    mainHandler.post {
+                        reportOfflineCandidate(events)
                     }
                 }
             } catch (e: Exception) {
-                // Test threw exception - treat as failure
-                consecutiveHttpsFailures++
-                val currentState = lastState ?: false
-                
-                // Only override if we have multiple consecutive failures
-                if (currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE) {
-                    mainHandler.post {
-                        sendUpdate(events, false, force = true)
-                    }
+                mainHandler.post {
+                    reportOfflineCandidate(events)
                 }
             }
         }
@@ -331,82 +322,68 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
     override fun onCancel(arguments: Any?) {
         // Stop periodic checks
         stopPeriodicCheck()
-        
+
         // Cancel any ongoing connectivity test
         currentConnectivityTest?.cancel(true)
         currentConnectivityTest = null
-        
+
         // Unregister network callback
         networkCallback?.let {
-            connectivityManager.unregisterNetworkCallback(it)
+            try {
+                connectivityManager.unregisterNetworkCallback(it)
+            } catch (e: Exception) {
+                // Already unregistered — ignore
+            }
         }
         networkCallback = null
         events = null
+        lastState = null
+        pendingOfflineSignals = 0
     }
 
-    // Helper logic from your image
-    private fun sendUpdate(events: EventChannel.EventSink?, isOnline: Boolean, force: Boolean = false) {
-        // CRITICAL: Always send updates from periodic checks and HTTP tests (force=true)
-        // Only skip if not forced AND state hasn't changed
+    private fun reportOnline(events: EventChannel.EventSink?) {
+        pendingOfflineSignals = 0
+        emitToFlutter(events, true)
+    }
+
+    /** Debounced offline: emit false only after enough independent offline signals. */
+    private fun reportOfflineCandidate(events: EventChannel.EventSink?) {
+        pendingOfflineSignals++
+        if (pendingOfflineSignals >= REQUIRED_OFFLINE_SIGNALS) {
+            emitToFlutter(events, false)
+            pendingOfflineSignals = 0
+        }
+    }
+
+    /** Immediate offline for unambiguous states (no active network at all). */
+    private fun reportOfflineNow(events: EventChannel.EventSink?) {
+        pendingOfflineSignals = 0
+        emitToFlutter(events, false)
+    }
+
+    /** Emit to Flutter; does not touch offline debounce counter (used for initial + cached probe replay). */
+    private fun emitToFlutter(events: EventChannel.EventSink?, isOnline: Boolean, force: Boolean = false) {
         if (!force && isOnline == lastState) {
             return
         }
-        
-        // Update last state
+
         lastState = isOnline
 
-        // Send immediately on main thread for faster response
-        // Using post ensures thread safety without delay
         val sendUpdateAction = Runnable {
             try {
                 events?.success(isOnline)
             } catch (e: Exception) {
-                // If sending fails, events might be null (stream cancelled)
-                // This is normal and can be ignored
+                // Stream cancelled — ignore
             }
         }
-        
+
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            // Already on main thread, send immediately
             sendUpdateAction.run()
         } else {
-            // Post to main thread
             mainHandler.post(sendUpdateAction)
         }
     }
 
-    private fun isNetworkAvailable(): Boolean {
-        val network = connectivityManager.activeNetwork ?: return false
-        val caps = connectivityManager.getNetworkCapabilities(network) ?: return false
-
-        // Check for basic internet capability
-        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-            return false
-        }
-
-        // Check if network has validated connectivity (real internet, not just connection)
-        // NET_CAPABILITY_VALIDATED means the network has been validated and can actually reach the internet
-        val hasValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-        
-        // If Android says it's validated, perform a quick connectivity test
-        // This is critical because Android may cache VALIDATED even when router loses internet
-        if (hasValidated) {
-            // Use cached result if available and recent (to avoid too many HTTP requests)
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastConnectivityTestTime < CONNECTIVITY_TEST_CACHE_MS) {
-                return lastConnectivityTestResult
-            }
-            
-            // Perform actual connectivity test and cache the result
-            val result = testActualConnectivity(network)
-            lastConnectivityTestTime = currentTime
-            lastConnectivityTestResult = result
-            return result
-        }
-
-        return false
-    }
-    
     private fun testActualConnectivity(network: Network): Boolean {
         // Test actual connectivity using HTTPS endpoints (required for Android 9+)
         // Android 9+ blocks cleartext HTTP by default, so we use HTTPS
@@ -429,12 +406,15 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                     connection.instanceFollowRedirects = false
                     
                     val responseCode = connection.responseCode
-                    
-                    // 204 (No Content) is the expected response from generate_204
-                    // Any 2xx or 3xx response indicates connectivity
-                    if (responseCode == 204 || responseCode in 200..399) {
+
+                    // generate_204 endpoints ALWAYS return 204. Any other response
+                    // (200 login page, 302 redirect, ...) means a captive portal or
+                    // proxy intercepted the request — that is NOT real internet.
+                    if (responseCode == 204) {
                         return true
                     }
+                    // A portal intercepts every request, so trying the other URLs is pointless
+                    return false
                 }
             } catch (e: java.net.SocketTimeoutException) {
                 // Timeout - try next URL

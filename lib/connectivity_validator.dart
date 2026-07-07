@@ -22,7 +22,13 @@ class ConnectivityValidator {
   /// Returns a stream of booleans (for continuous monitoring).
   /// true = Internet Validated (Active & Working)
   /// false = No Internet or Captive Portal
+  ///
+  /// Consecutive duplicate values are filtered out, so listeners only
+  /// see actual connectivity changes.
   Stream<bool> get onConnectivityChanged {
-    return _eventChannel.receiveBroadcastStream().map((event) => event == true);
+    return _eventChannel
+        .receiveBroadcastStream()
+        .map((event) => event == true)
+        .distinct();
   }
 }

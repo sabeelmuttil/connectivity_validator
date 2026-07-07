@@ -19,7 +19,7 @@ Flutter plugin for **validated** internet connectivity: real internet access, no
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.6
+  connectivity_validator: ^0.0.7
 ```
 
 ```bash

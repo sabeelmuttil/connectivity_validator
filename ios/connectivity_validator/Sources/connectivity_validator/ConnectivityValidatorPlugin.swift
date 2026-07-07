@@ -16,6 +16,15 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
     private var periodicCheckTimer: Timer?
     private let PERIODIC_CHECK_INTERVAL: TimeInterval = 2.0 // 2 seconds
 
+    /// Emit false only after this many separate offline signals (OS, timers, probe failures).
+    /// A first-ever offline state is emitted immediately; this debounce only applies to changes.
+    private let REQUIRED_OFFLINE_SIGNALS = 2
+
+    /// Probe timeout — must cover a full TLS handshake on slow cellular networks;
+    /// 0.5s caused false "offline" results on high-latency connections.
+    private let PROBE_TIMEOUT: TimeInterval = 2.0
+    private var pendingOfflineSignals = 0
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let eventChannel = FlutterEventChannel(name: "connectivity_validator/status", binaryMessenger: registrar.messenger())
         let instance = ConnectivityValidatorPlugin()
@@ -69,11 +78,13 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         }
         var request = URLRequest(url: url)
         request.httpMethod = "HEAD"
-        request.timeoutInterval = 0.5
+        request.timeoutInterval = PROBE_TIMEOUT
         request.cachePolicy = .reloadIgnoringLocalCacheData
         let task = URLSession.shared.dataTask(with: request) { _, response, _ in
-            if let http = response as? HTTPURLResponse, (http.statusCode == 204 || (200..<400).contains(http.statusCode)) {
-                completion(true)
+            if let http = response as? HTTPURLResponse {
+                // generate_204 endpoints ALWAYS return 204. Anything else means a
+                // captive portal or proxy intercepted the request — not real internet.
+                completion(http.statusCode == 204)
                 return
             }
             self.testConnectivityOneShot(urls: urls, index: index + 1, completion: completion)
@@ -83,6 +94,7 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
 
     public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         self.eventSink = events
+        pendingOfflineSignals = 0
         
         // Monitor all network interfaces (WiFi, cellular, etc.)
         // This ensures we detect changes when WiFi loses internet but remains connected
@@ -91,37 +103,24 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         monitor?.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }
 
-            // .satisfied means internet is validated (past captive portals)
-            // However, this can be stale when router loses internet but WiFi stays connected
             let pathSaysOnline = (path.status == .satisfied)
-            
-            // If HTTPS test has determined we're offline, don't override with stale path status
+
             if pathSaysOnline && self.consecutiveHttpsFailures >= self.REQUIRED_FAILURES_TO_OVERRIDE {
-                // Don't send update - keep current OFFLINE state from HTTPS test
                 return
             }
-            
-            // Send immediate update based on path status for responsiveness
-            if pathSaysOnline != self.lastState {
-                self.lastState = pathSaysOnline
-                
-                // Send immediately on main thread for faster response
-                if Thread.isMainThread {
-                    events(pathSaysOnline)
-                } else {
-                    DispatchQueue.main.async {
-                        events(pathSaysOnline)
-                    }
-                }
-            }
-            
-            // If path says online, verify with HTTPS test in background
-            // This catches cases where path.status is stale (router lost internet)
+
             if pathSaysOnline {
+                self.reportOnline()
                 self.verifyConnectivityAsync()
             } else {
-                // Path says offline - reset failure counter
                 self.consecutiveHttpsFailures = 0
+                if self.lastState == nil {
+                    // First update and we're offline — emit immediately so listeners
+                    // (e.g. `onConnectivityChanged.first`) get an initial value
+                    self.reportOfflineNow()
+                } else {
+                    self.reportOfflineCandidate()
+                }
             }
         }
 
@@ -139,43 +138,26 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         
         periodicCheckTimer = Timer.scheduledTimer(withTimeInterval: PERIODIC_CHECK_INTERVAL, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            
-            // Check current path status
+
             guard let path = self.monitor?.currentPath else {
-                // No path - definitely offline
-                if self.lastState != false {
-                    self.lastState = false
-                    self.sendUpdate(isOnline: false, force: true)
-                }
+                self.reportOfflineCandidate()
                 return
             }
-            
+
             let pathSaysOnline = (path.status == .satisfied)
-            
+
             if pathSaysOnline {
-                // Path says online, but check if HTTPS test has determined we're offline
-                if self.consecutiveHttpsFailures >= self.REQUIRED_FAILURES_TO_OVERRIDE {
-                    // Don't send update - keep current OFFLINE state
-                } else {
-                    // No HTTPS failures or only 1 failure - trust path status
-                    if self.lastState != true {
-                        self.lastState = true
-                        self.sendUpdate(isOnline: true, force: false)
-                    }
-                }
-                
-                // Verify with HTTPS test periodically
+                // Don't report online from the path alone here: it can stay satisfied
+                // after the router loses upstream internet, and reporting online would
+                // reset the offline debounce and mask HTTPS probe failures.
+                // The probe result (verifyConnectivityAsync) is authoritative.
                 let currentTime = Date().timeIntervalSince1970 * 1000
                 if currentTime - self.lastConnectivityTestTime > self.CONNECTIVITY_TEST_CACHE_MS {
                     self.verifyConnectivityAsync()
                 }
             } else {
-                // Path says offline - reset failure counter and send update
                 self.consecutiveHttpsFailures = 0
-                if self.lastState != false {
-                    self.lastState = false
-                    self.sendUpdate(isOnline: false, force: true)
-                }
+                self.reportOfflineCandidate()
             }
         }
     }
@@ -219,62 +201,70 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         
         var request = URLRequest(url: url)
         request.httpMethod = "HEAD"
-        request.timeoutInterval = 0.5
+        request.timeoutInterval = PROBE_TIMEOUT
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        
+
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
-            
+
             if let httpResponse = response as? HTTPURLResponse {
-                let statusCode = httpResponse.statusCode
-                if statusCode == 204 || (statusCode >= 200 && statusCode < 400) {
-                    // Success - we have connectivity
-                    self.handleHttpsTestResult(success: true)
-                    return
-                }
+                // generate_204 endpoints ALWAYS return 204. Anything else means a
+                // captive portal or proxy intercepted the request — not real internet,
+                // and it will intercept the remaining URLs too.
+                self.handleHttpsTestResult(success: httpResponse.statusCode == 204)
+                return
             }
-            
-            // This URL failed, try next
+
+            // No HTTP response (network error) — try next URL
             self.testConnectivityWithUrls(urls, index: index + 1)
         }
-        
+
         task.resume()
     }
-    
+
     private func handleHttpsTestResult(success: Bool) {
         lastConnectivityTestTime = Date().timeIntervalSince1970 * 1000
-        
-        let currentState = lastState ?? false
-        
+
         if success {
-            // HTTPS test succeeded - reset failure counter
             consecutiveHttpsFailures = 0
-            
-            if !currentState {
-                // HTTPS says online but we're showing offline - update immediately
-                lastState = true
-                sendUpdate(isOnline: true, force: true)
-            }
+            reportOnline()
         } else {
-            // HTTPS test failed - increment failure counter
             consecutiveHttpsFailures += 1
-            
-            // Only override path status if we have multiple consecutive failures
-            if currentState && consecutiveHttpsFailures >= REQUIRED_FAILURES_TO_OVERRIDE {
-                lastState = false
-                sendUpdate(isOnline: false, force: true)
-            }
+            reportOfflineCandidate()
         }
     }
-    
-    private func sendUpdate(isOnline: Bool, force: Bool) {
+
+    private func reportOnline() {
+        pendingOfflineSignals = 0
+        emitToFlutter(isOnline: true)
+    }
+
+    /// Debounced offline: emit false only after enough independent offline signals.
+    private func reportOfflineCandidate() {
+        pendingOfflineSignals += 1
+        if pendingOfflineSignals >= REQUIRED_OFFLINE_SIGNALS {
+            emitToFlutter(isOnline: false)
+            pendingOfflineSignals = 0
+        }
+    }
+
+    /// Immediate offline for unambiguous states (e.g. first path update says offline).
+    private func reportOfflineNow() {
+        pendingOfflineSignals = 0
+        emitToFlutter(isOnline: false)
+    }
+
+    private func emitToFlutter(isOnline: Bool) {
         guard let events = eventSink else { return }
-        
-        // Only skip if not forced AND state hasn't changed
-        if !force && isOnline == (lastState ?? false) {
+
+        // Dedupe against the last emitted value; a nil lastState (nothing emitted yet)
+        // always goes through so listeners get an initial value
+        if let last = lastState, isOnline == last {
             return
         }
-        
+
+        lastState = isOnline
+
         if Thread.isMainThread {
             events(isOnline)
         } else {
@@ -291,6 +281,7 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         lastState = nil
         eventSink = nil
         consecutiveHttpsFailures = 0
+        pendingOfflineSignals = 0
         return nil
     }
 }
