@@ -1,5 +1,5 @@
 PODS:
-  - connectivity_validator (0.0.7):
+  - connectivity_validator (0.0.8):
     - Flutter
   - Flutter (1.0.0)
   - integration_test (0.0.1):

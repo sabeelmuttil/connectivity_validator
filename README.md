@@ -4,18 +4,18 @@
 [![pub points](https://img.shields.io/pub/points/connectivity_validator?color=2E8B57&label=pub%20points)](https://pub.dev/packages/connectivity_validator/score)
 [![CI](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml/badge.svg)](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml)
 
-Flutter plugin for **validated** internet connectivity: real internet access, not just “network connected.” Detects captive portals and router-without-internet. Stream-based, Android & iOS.
+Flutter plugin for **validated** internet connectivity: real internet access, not just “network connected.” Detects captive portals and router-without-internet. Stream-based, Android, iOS & macOS.
 
 ## Features
 
 - Validated connectivity (real internet, not only link up)
 - Captive portal and “WiFi on, no internet” detection
 - Real-time stream (`onConnectivityChanged`)
-- Android (API 24+) and iOS (12.0+)
+- Android (API 24+), iOS (12.0+) and macOS (10.14+)
 
 ## Why connectivity_validator?
 
-Most connectivity packages tell you whether a network *interface* is up — not whether
+Most connectivity packages tell you whether a network _interface_ is up — not whether
 you can actually reach the internet. So your app shows “online” while stuck behind a
 hotel WiFi login page, or when the router has lost its upstream connection.
 
@@ -24,13 +24,13 @@ reach the internet right now?** It combines native OS validation
 (`NET_CAPABILITY_VALIDATED` on Android, `NWPathMonitor` on iOS) with a lightweight HTTPS
 probe to `generate_204` endpoints, so a captive portal or dead router reports as offline.
 
-| | `connectivity_plus` | `internet_connection_checker` | **connectivity_validator** |
-|---|:---:|:---:|:---:|
-| Network interface up | ✅ | ✅ | ✅ |
-| Real internet reachable | ❌ | ✅ | ✅ |
-| Captive portal detected | ❌ | ❌ | ✅ |
-| Native OS validation | ❌ | ❌ | ✅ |
-| Real-time stream | ✅ | ✅ | ✅ |
+|                         | `connectivity_plus` | `internet_connection_checker` | **connectivity_validator** |
+| ----------------------- | :-----------------: | :---------------------------: | :------------------------: |
+| Network interface up    |         ✅          |              ✅               |             ✅             |
+| Real internet reachable |         ❌          |              ✅               |             ✅             |
+| Captive portal detected |         ❌          |              ❌               |             ✅             |
+| Native OS validation    |         ❌          |              ❌               |             ✅             |
+| Real-time stream        |         ✅          |              ✅               |             ✅             |
 
 ## Installation
 
@@ -38,7 +38,7 @@ probe to `generate_204` endpoints, so a captive portal or dead router reports as
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.7
+  connectivity_validator: ^0.0.8
 ```
 
 ```bash
@@ -61,6 +61,17 @@ flutter pub get
   ```bash
   cd ios && pod install && cd ..
   ```
+
+**macOS** — The app sandbox blocks outgoing requests by default, so the HTTPS
+validation probe needs the network **client** entitlement. Add it to **both**
+`macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.entitlements`:
+
+```xml
+<key>com.apple.security.network.client</key>
+<true/>
+```
+
+Without this the plugin always reports offline on macOS.
 
 ## Usage
 

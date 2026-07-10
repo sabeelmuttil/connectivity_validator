@@ -1,6 +1,6 @@
 name: connectivity_validator
 description: "Validated internet connectivity for Flutter: detects real internet access (not just a network link) and captive portals, using native Android & iOS APIs."
-version: 0.0.7
+version: 0.0.8
 homepage: https://github.com/sabeelmuttil/connectivity_validator
 repository: https://github.com/sabeelmuttil/connectivity_validator
 issue_tracker: https://github.com/sabeelmuttil/connectivity_validator/issues

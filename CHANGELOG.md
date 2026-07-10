@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2026-07-07
+
+### Added
+
+- **macOS support** (10.14+) using native `NWPathMonitor` plus the same HTTPS validation probe as iOS. Requires the `com.apple.security.network.client` sandbox entitlement (see README).
+
+### Changed
+
+- Added a Cloudflare (`cp.cloudflare.com/generate_204`) probe fallback so validation works in regions where Google endpoints are blocked (Android, iOS and macOS)
+- Only HTTP 204 from `generate_204` endpoints counts as validated connectivity, closing a captive-portal false positive where 3xx redirects were treated as online
+- Added pub.dev `topics` and a clearer package description for discoverability
+
 ## [0.0.7] - 2026-07-07
 
 ### Fixed
@@ -18,8 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `onConnectivityChanged` stream filters consecutive duplicate values via `.distinct()` so listeners only see actual state changes
-- Added a Cloudflare (`cp.cloudflare.com/generate_204`) probe fallback so validation works in regions where Google endpoints are blocked
-- Added pub.dev `topics` and a clearer package description for discoverability
 
 ## [0.0.6] - 2026-03-05
 
