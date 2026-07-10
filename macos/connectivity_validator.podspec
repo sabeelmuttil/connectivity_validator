@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'connectivity_validator'
-  s.version          = '0.0.8'
+  s.version          = '0.0.9'
   s.summary          = 'Validated internet connectivity for Flutter (macOS).'
   s.description      = <<-DESC
 Detects real internet access (not just a network link) and captive portals using

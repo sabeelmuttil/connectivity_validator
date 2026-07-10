@@ -38,7 +38,7 @@ probe to `generate_204` endpoints, so a captive portal or dead router reports as
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.8
+  connectivity_validator: ^0.0.9
 ```
 
 ```bash

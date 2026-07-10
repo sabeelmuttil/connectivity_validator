@@ -1,5 +1,5 @@
 PODS:
-  - connectivity_validator (0.0.8):
+  - connectivity_validator (0.0.9):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
 
@@ -14,7 +14,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
 
 SPEC CHECKSUMS:
-  connectivity_validator: 491661354cf2ca4d6bebc538e7401aa61b5ec40d
+  connectivity_validator: 9bafc8fdfe8f613f7c4a9c8774091738236c4cdd
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
