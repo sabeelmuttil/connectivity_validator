@@ -6,10 +6,9 @@ import PackageDescription
 let package = Package(
     name: "connectivity_validator",
     platforms: [
-        .iOS("13.0"),
+        .macOS("10.14"),
     ],
     products: [
-        // If the plugin name contains "_", replace with "-" for the library name.
         .library(
             name: "connectivity-validator",
             targets: ["connectivity_validator"]

@@ -15,7 +15,8 @@ native NWPathMonitor plus an HTTPS validation probe.
   s.author           = { 'Sabeel KM' => 'sabeelmuttil@gmail.com' }
 
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files = 'connectivity_validator/Sources/connectivity_validator/**/*.swift'
+  s.resource_bundles = {'connectivity_validator_privacy' => ['connectivity_validator/Sources/connectivity_validator/PrivacyInfo.xcprivacy']}
 
   s.dependency 'FlutterMacOS'
 
