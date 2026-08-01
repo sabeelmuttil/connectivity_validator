@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-01
+
+### Changed
+
+- README: document Dart `>=3.4.0` / Flutter `>=3.22.0` requirement; add Web row to comparison table
+- Package description updated to list Android, iOS, macOS, and Web
+- Troubleshooting docs: Web CORS / always-offline tips; CI path filters include `macos/`
+- Removed unused `plugin_platform_interface` dependency
+
 ## [0.1.0] - 2026-08-01
 
 ### Added

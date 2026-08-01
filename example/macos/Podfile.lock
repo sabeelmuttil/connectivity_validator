@@ -1,5 +1,5 @@
 PODS:
-  - connectivity_validator (0.1.0):
+  - connectivity_validator (0.1.1):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
 

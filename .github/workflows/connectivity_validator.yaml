@@ -15,9 +15,11 @@ on:
       - "lib/**"
       - "android/**"
       - "ios/**"
+      - "macos/**"
       - "example/**"
       - ".github/workflows/connectivity_validator.yaml"
       - "pubspec.yaml"
+      - "pubspec.lock"
       - "!**.md"
       - "!**.gitignore"
   push:
@@ -26,9 +28,11 @@ on:
       - "lib/**"
       - "android/**"
       - "ios/**"
+      - "macos/**"
       - "example/**"
       - ".github/workflows/connectivity_validator.yaml"
       - "pubspec.yaml"
+      - "pubspec.lock"
 
 jobs:
   analyze:

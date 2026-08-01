@@ -31,15 +31,18 @@ browser fetch probe (see [Web setup](#web-setup)).
 | Real internet reachable |         ❌          |              ✅               |             ✅             |
 | Captive portal detected |         ❌          |              ❌               |             ✅             |
 | Native OS validation    |         ❌          |              ❌               |             ✅             |
+| Web support             |         ✅          |              ✅               |             ✅             |
 | Real-time stream        |         ✅          |              ✅               |             ✅             |
 
 ## Installation
+
+Requires **Dart >=3.4.0** and **Flutter >=3.22.0**.
 
 **pubspec.yaml**
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.1.0
+  connectivity_validator: ^0.1.1
 ```
 
 ```bash
