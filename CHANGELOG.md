@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-01
+
 ### Added
 
-- **Web support** using `navigator.onLine`, Page Visibility (pause probes when the tab is hidden), and a GET fetch probe to `https://www.gstatic.com/generate_204` in `no-cors` mode (fulfill/reject as the connectivity signal; status codes are not readable under `no-cors`)
+- **Web platform support** — `navigator.onLine` baseline plus a GET fetch probe to `https://www.gstatic.com/generate_204` in `no-cors` mode (fulfill/reject as the connectivity signal; status codes are not readable under `no-cors`)
+- Page Visibility: pause periodic probes when the tab is hidden; re-probe when visible again
 - Optional `ConnectivityValidator(probeUrl: …)` — on Web, a custom URL uses CORS mode and requires HTTP `204`; ignored on Android, iOS, and macOS
+- README **Web setup** section documenting CORS / `no-cors` behavior and when to supply a same-origin or CORS-enabled `probeUrl`
 - SDK floor raised to Dart `>=3.4.0` / Flutter `>=3.22.0` for `package:web`
+
+### Fixed
+
+- Web dart2js/WASM compile failure from tearing off `AbortController.abort` in `Timer` — wrap in a closure instead
 
 ### Changed
 

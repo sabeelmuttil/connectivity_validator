@@ -39,7 +39,7 @@ browser fetch probe (see [Web setup](#web-setup)).
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.0.9
+  connectivity_validator: ^0.1.0
 ```
 
 ```bash
