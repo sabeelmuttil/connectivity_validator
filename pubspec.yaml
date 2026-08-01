@@ -13,13 +13,16 @@ topics:
   - offline
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
-  flutter: ">=3.3.0"
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   plugin_platform_interface: ^2.0.2
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -40,3 +43,6 @@ flutter:
         pluginClass: ConnectivityValidatorPlugin
       macos:
         pluginClass: ConnectivityValidatorPlugin
+      web:
+        pluginClass: ConnectivityValidatorPlugin
+        fileName: connectivity_validator_web.dart
