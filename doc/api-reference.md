@@ -4,6 +4,12 @@
 
 Main class for connectivity status.
 
+```dart
+ConnectivityValidator({String? probeUrl});
+```
+
+- **`probeUrl`** (optional) — On **Web**, overrides the default gstatic probe. Custom URLs use CORS mode and must return HTTP `204` (same-origin or CORS-enabled). Ignored on Android, iOS, and macOS.
+
 ### onConnectivityChanged → Stream&lt;bool&gt;
 
 Stream of connectivity status:
@@ -24,3 +30,7 @@ validator.onConnectivityChanged.listen((isOnline) {
   print(isOnline ? 'Online' : 'Offline');
 });
 ```
+
+### getConnectivityStatus → Future&lt;bool&gt;
+
+One-shot check (same meaning as stream values). Use for button taps or imperative checks.

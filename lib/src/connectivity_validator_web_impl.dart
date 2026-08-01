@@ -118,7 +118,7 @@ class ConnectivityValidator {
 
   Future<bool> _probe() async {
     final abort = web.AbortController();
-    final timeout = Timer(_kProbeTimeout, abort.abort);
+    final timeout = Timer(_kProbeTimeout, () => abort.abort());
 
     try {
       if (_useCorsStatusCheck) {
