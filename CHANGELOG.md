@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-08-03
+
+### Changed
+
+- README: split the feature comparison into separate Android/iOS/macOS and Web tables so Web reachability vs strict CORS validation is clearer
+
 ## [0.1.2] - 2026-08-03
 
 ### Fixed

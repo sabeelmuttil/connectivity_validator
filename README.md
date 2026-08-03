@@ -25,19 +25,26 @@ reach the internet right now?** On mobile/desktop it combines native OS validati
 HTTPS probe to `generate_204` endpoints. On Web it uses `navigator.onLine` plus a
 browser fetch probe (see [Web setup](#web-setup)).
 
+### Android, iOS, and macOS
+
 |                         | `connectivity_plus` | `internet_connection_checker` | **connectivity_validator** |
 | ----------------------- | :-----------------: | :---------------------------: | :------------------------: |
 | Network interface up    |         ✅          |              ✅               |             ✅             |
-| Real internet reachable |         ❌          |              ✅               |           ✅ / ⚠️¹         |
-| Captive portal detected |         ❌          |              ❌               |           ✅ / ⚠️¹         |
+| Real internet reachable |         ❌          |              ✅               |             ✅             |
+| Captive portal detected |         ❌          |              ❌               |             ✅             |
 | Native OS validation    |         ❌          |              ❌               |             ✅             |
-| Web support             |         ✅          |              ✅               |             ✅             |
 | Real-time stream        |         ✅          |              ✅               |             ✅             |
 
-¹ Android, iOS, and macOS strictly validate HTTP `204`. The default Web
-probe can confirm browser reachability but cannot inspect a cross-origin
-response for captive-portal detection; provide a CORS-enabled `probeUrl` for
-strict Web validation.
+### Web behavior
+
+| `connectivity_validator` Web configuration | Real internet validation | Captive portal detection |
+| ------------------------------------------ | :----------------------: | :----------------------: |
+| Default cross-origin probe                 |   ⚠️ Reachability only   |        ⚠️ Limited        |
+| Same-origin or CORS-enabled `probeUrl`     |   ✅ Strict HTTP `204`   |            ✅            |
+
+The default browser probe cannot inspect a cross-origin response because of
+CORS. Use a CORS-enabled `probeUrl` when Web needs the same strict validation
+as Android, iOS, and macOS.
 
 ## Installation
 
@@ -47,7 +54,7 @@ Requires **Dart >=3.4.0** and **Flutter >=3.22.0**.
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.1.2
+  connectivity_validator: ^0.1.3
 ```
 
 ```bash
