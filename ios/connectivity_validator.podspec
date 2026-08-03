@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'connectivity_validator'
-  s.version          = '0.1.1'
+  s.version          = '0.1.2'
   s.summary          = 'A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs.'
   s.description      = <<-DESC
 A robust internet connectivity checker that validates actual network access using native Android (NET_CAPABILITY_VALIDATED) and iOS (NWPathMonitor) APIs.

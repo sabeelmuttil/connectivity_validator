@@ -9,6 +9,14 @@ class ConnectivityValidator {
     'connectivity_validator/method',
   );
 
+  // An EventChannel supports one native subscription per channel. Keep one
+  // broadcast stream for every validator instance so multiple widgets can
+  // listen without registering duplicate native callbacks.
+  static final Stream<bool> _connectivityChanges = _eventChannel
+      .receiveBroadcastStream()
+      .map((event) => event == true)
+      .distinct();
+
   /// Creates a connectivity validator.
   ///
   /// [probeUrl] is accepted for API parity with the web implementation and
@@ -32,9 +40,6 @@ class ConnectivityValidator {
   /// Consecutive duplicate values are filtered out, so listeners only
   /// see actual connectivity changes.
   Stream<bool> get onConnectivityChanged {
-    return _eventChannel
-        .receiveBroadcastStream()
-        .map((event) => event == true)
-        .distinct();
+    return _connectivityChanges;
   }
 }

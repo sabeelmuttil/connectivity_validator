@@ -28,18 +28,22 @@ void main() {
     expect(stream, isA<Stream<bool>>());
   });
 
-  test('onConnectivityChanged can be accessed multiple times', () {
+  test('onConnectivityChanged shares one native event stream', () {
     ConnectivityValidator connectivityValidator = ConnectivityValidator();
     final stream1 = connectivityValidator.onConnectivityChanged;
     final stream2 = connectivityValidator.onConnectivityChanged;
 
     expect(stream1, isA<Stream<bool>>());
     expect(stream2, isA<Stream<bool>>());
+    expect(identical(stream1, stream2), isTrue);
+    expect(
+      identical(stream1, ConnectivityValidator().onConnectivityChanged),
+      isTrue,
+    );
   });
 
-  test('checkConnectivity returns a Future<bool>', () {
+  test('getConnectivityStatus resolves the native result', () async {
     ConnectivityValidator connectivityValidator = ConnectivityValidator();
-    final result = connectivityValidator.getConnectivityStatus;
-    expect(result, isA<Future<bool>>());
+    expect(await connectivityValidator.getConnectivityStatus, isTrue);
   });
 }

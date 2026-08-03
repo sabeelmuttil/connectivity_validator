@@ -1,28 +1,16 @@
 PODS:
-  - connectivity_validator (0.1.1):
-    - Flutter
   - Flutter (1.0.0)
-  - integration_test (0.0.1):
-    - Flutter
 
 DEPENDENCIES:
-  - connectivity_validator (from `.symlinks/plugins/connectivity_validator/ios`)
   - Flutter (from `Flutter`)
-  - integration_test (from `.symlinks/plugins/integration_test/ios`)
 
 EXTERNAL SOURCES:
-  connectivity_validator:
-    :path: ".symlinks/plugins/connectivity_validator/ios"
   Flutter:
     :path: Flutter
-  integration_test:
-    :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
-  connectivity_validator: 6d265da2b7ef5bb6d25d8ec4a5ce93c1eabe5e31
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
 
 PODFILE CHECKSUM: 251cb053df7158f337c0712f2ab29f4e0fa474ce
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

@@ -1,22 +1,16 @@
 PODS:
-  - connectivity_validator (0.1.1):
-    - FlutterMacOS
   - FlutterMacOS (1.0.0)
 
 DEPENDENCIES:
-  - connectivity_validator (from `Flutter/ephemeral/.symlinks/plugins/connectivity_validator/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
 
 EXTERNAL SOURCES:
-  connectivity_validator:
-    :path: Flutter/ephemeral/.symlinks/plugins/connectivity_validator/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
 
 SPEC CHECKSUMS:
-  connectivity_validator: 9bafc8fdfe8f613f7c4a9c8774091738236c4cdd
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

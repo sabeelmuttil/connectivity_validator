@@ -4,12 +4,12 @@
 [![pub points](https://img.shields.io/pub/points/connectivity_validator?color=2E8B57&label=pub%20points)](https://pub.dev/packages/connectivity_validator/score)
 [![CI](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml/badge.svg)](https://github.com/sabeelmuttil/connectivity_validator/actions/workflows/connectivity_validator.yaml)
 
-Flutter plugin for **validated** internet connectivity: real internet access, not just “network connected.” Detects captive portals and router-without-internet. Stream-based, Android, iOS, macOS & Web.
+Flutter plugin for **validated** internet connectivity: real internet access, not just “network connected.” Detects captive portals and router-without-internet on Android, iOS, and macOS. Web support uses a browser reachability probe; strict Web validation requires a CORS-enabled endpoint. Stream-based, Android, iOS, macOS & Web.
 
 ## Features
 
-- Validated connectivity (real internet, not only link up)
-- Captive portal and “WiFi on, no internet” detection
+- Validated connectivity (real internet, not only link up) on Android, iOS, and macOS
+- Captive portal and “WiFi on, no internet” detection on Android, iOS, and macOS
 - Real-time stream (`onConnectivityChanged`)
 - Android (API 24+), iOS (12.0+), macOS (10.14+) and Web
 
@@ -28,11 +28,16 @@ browser fetch probe (see [Web setup](#web-setup)).
 |                         | `connectivity_plus` | `internet_connection_checker` | **connectivity_validator** |
 | ----------------------- | :-----------------: | :---------------------------: | :------------------------: |
 | Network interface up    |         ✅          |              ✅               |             ✅             |
-| Real internet reachable |         ❌          |              ✅               |             ✅             |
-| Captive portal detected |         ❌          |              ❌               |             ✅             |
+| Real internet reachable |         ❌          |              ✅               |           ✅ / ⚠️¹         |
+| Captive portal detected |         ❌          |              ❌               |           ✅ / ⚠️¹         |
 | Native OS validation    |         ❌          |              ❌               |             ✅             |
 | Web support             |         ✅          |              ✅               |             ✅             |
 | Real-time stream        |         ✅          |              ✅               |             ✅             |
+
+¹ Android, iOS, and macOS strictly validate HTTP `204`. The default Web
+probe can confirm browser reachability but cannot inspect a cross-origin
+response for captive-portal detection; provide a CORS-enabled `probeUrl` for
+strict Web validation.
 
 ## Installation
 
@@ -42,7 +47,7 @@ Requires **Dart >=3.4.0** and **Flutter >=3.22.0**.
 
 ```yaml
 dependencies:
-  connectivity_validator: ^0.1.1
+  connectivity_validator: ^0.1.2
 ```
 
 ```bash
@@ -95,6 +100,11 @@ final validator = ConnectivityValidator(
 ```
 
 When `probeUrl` is set, Web uses CORS mode and treats `status == 204` as online. Non-CORS custom URLs will fail closed (report offline).
+
+**Content Security Policy (CSP):** If your Web app sets `connect-src`, it must
+allow the probe origin. For the default probe, add `https://www.gstatic.com`;
+with a custom probe, allow that endpoint instead. A same-origin `probeUrl`
+avoids cross-origin CORS; a restrictive policy must still allow `'self'`.
 
 `probeUrl` is accepted on all platforms for API parity but is **ignored** on Android, iOS, and macOS (those keep their native probe lists).
 

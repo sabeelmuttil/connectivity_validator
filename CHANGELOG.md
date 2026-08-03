@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-03
+
+### Fixed
+
+- Reuse one native EventChannel subscription across multiple Dart stream listeners, preventing duplicate network callbacks and probes
+- Ignore stale, out-of-order Web probe results so an older fetch cannot overwrite a newer online/offline state
+- Emit native `true` stream values only after the HTTPS validation probe succeeds; OS network signals are now hints rather than immediate online results
+- Try the next native probe endpoint after non-redirect HTTP failures, allowing the Cloudflare fallback to work when a proxy blocks one endpoint
+
+### Changed
+
+- Clarified that the default Web `no-cors` probe provides reachability only; strict HTTP-204 and captive-portal validation requires a same-origin or CORS-enabled `probeUrl`
+- Documented the Web Content Security Policy (`connect-src`) requirement for probe URLs
+
 ## [0.1.1] - 2026-08-01
 
 ### Changed

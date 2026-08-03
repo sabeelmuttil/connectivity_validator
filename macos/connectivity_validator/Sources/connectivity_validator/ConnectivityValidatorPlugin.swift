@@ -83,9 +83,16 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
         request.cachePolicy = .reloadIgnoringLocalCacheData
         let task = URLSession.shared.dataTask(with: request) { _, response, _ in
             if let http = response as? HTTPURLResponse {
-                // generate_204 endpoints ALWAYS return 204. Anything else means a
-                // captive portal or proxy intercepted the request — not real internet.
-                completion(http.statusCode == 204)
+                // A redirect is a strong captive-portal signal. For other non-204
+                // responses, try the fallback URL: a corporate proxy may block a
+                // particular endpoint while internet access is otherwise available.
+                if http.statusCode == 204 {
+                    completion(true)
+                } else if (300..<400).contains(http.statusCode) {
+                    completion(false)
+                } else {
+                    self.testConnectivityOneShot(urls: urls, index: index + 1, completion: completion)
+                }
                 return
             }
             self.testConnectivityOneShot(urls: urls, index: index + 1, completion: completion)
@@ -94,6 +101,11 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
     }
 
     public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        // EventChannel has one native subscription. Dispose a previous monitor
+        // defensively if Dart starts another stream before cancelling the first.
+        if monitor != nil || eventSink != nil {
+            _ = onCancel(withArguments: nil)
+        }
         self.eventSink = events
         pendingOfflineSignals = 0
 
@@ -111,7 +123,8 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
             }
 
             if pathSaysOnline {
-                self.reportOnline()
+                // NWPath only reports that a route exists. The HTTPS probe is
+                // authoritative and emits true only after it succeeds.
                 self.verifyConnectivityAsync()
             } else {
                 self.consecutiveHttpsFailures = 0
@@ -209,10 +222,15 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
             guard let self = self else { return }
 
             if let httpResponse = response as? HTTPURLResponse {
-                // generate_204 endpoints ALWAYS return 204. Anything else means a
-                // captive portal or proxy intercepted the request — not real internet,
-                // and it will intercept the remaining URLs too.
-                self.handleHttpsTestResult(success: httpResponse.statusCode == 204)
+                // Redirects strongly indicate a captive portal. Other non-204
+                // responses can be endpoint-specific, so try the fallback URL.
+                if httpResponse.statusCode == 204 {
+                    self.handleHttpsTestResult(success: true)
+                } else if (300..<400).contains(httpResponse.statusCode) {
+                    self.handleHttpsTestResult(success: false)
+                } else {
+                    self.testConnectivityWithUrls(urls, index: index + 1)
+                }
                 return
             }
 
@@ -231,7 +249,14 @@ public class ConnectivityValidatorPlugin: NSObject, FlutterPlugin, FlutterStream
             reportOnline()
         } else {
             consecutiveHttpsFailures += 1
-            reportOfflineCandidate()
+            if lastState == nil {
+                // A first probe failure establishes the initial offline state;
+                // otherwise `onConnectivityChanged.first` could wait a full
+                // debounce interval without receiving a value.
+                reportOfflineNow()
+            } else {
+                reportOfflineCandidate()
+            }
         }
     }
 

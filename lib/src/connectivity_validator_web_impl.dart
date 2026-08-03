@@ -24,32 +24,53 @@ class ConnectivityValidator {
   /// as the connectivity signal.
   final bool _useCorsStatusCheck;
 
+  late final Stream<bool> _connectivityChanges = _createConnectivityStream();
+
   /// Returns the current network state once.
-  /// true = Internet validated (active & working)
-  /// false = No internet or captive portal
+  /// true = The probe was reachable. With a custom CORS-enabled [probeUrl],
+  /// this means the endpoint returned HTTP 204.
+  /// false = No network, the probe failed, or the browser blocked the request.
   ///
   /// Use this for on-demand checks (e.g. when the user taps a button).
   Future<bool> get getConnectivityStatus => _checkConnectivity();
 
   /// Returns a stream of booleans (for continuous monitoring).
-  /// true = Internet Validated (Active & Working)
-  /// false = No Internet or Captive Portal
+  /// With the default cross-origin probe, this reports reachability only: a
+  /// browser cannot inspect an opaque `no-cors` response to detect a captive
+  /// portal. Supply a CORS-enabled [probeUrl] for strict HTTP-204 validation.
   ///
   /// Consecutive duplicate values are filtered out, so listeners only
   /// see actual connectivity changes.
   Stream<bool> get onConnectivityChanged {
+    return _connectivityChanges;
+  }
+
+  Stream<bool> _createConnectivityStream() {
     late StreamController<bool> controller;
     StreamSubscription<web.Event>? onlineSub;
     StreamSubscription<web.Event>? offlineSub;
     StreamSubscription<web.Event>? visibilitySub;
     Timer? periodicTimer;
     var active = false;
+    var latestProbeId = 0;
 
     Future<void> emitLatest() async {
       if (!active) return;
+      final probeId = ++latestProbeId;
       final isOnline = await _checkConnectivity();
-      if (active && !controller.isClosed) {
+      // Fetch completion order is not guaranteed. Ignore an older result that
+      // completed after a newer probe or an offline browser event.
+      if (active && !controller.isClosed && probeId == latestProbeId) {
         controller.add(isOnline);
+      }
+    }
+
+    void emitOffline() {
+      // Invalidate any in-flight probe that could otherwise overwrite this
+      // unambiguous browser offline event with a stale `true` value.
+      latestProbeId++;
+      if (active && !controller.isClosed) {
+        controller.add(false);
       }
     }
 
@@ -68,6 +89,7 @@ class ConnectivityValidator {
 
     void tearDown() {
       active = false;
+      latestProbeId++;
       stopPeriodic();
       onlineSub?.cancel();
       offlineSub?.cancel();
@@ -88,11 +110,7 @@ class ConnectivityValidator {
 
         offlineSub = web.EventStreamProviders.offlineEvent
             .forTarget(web.window)
-            .listen((_) {
-          if (active && !controller.isClosed) {
-            controller.add(false);
-          }
-        });
+            .listen((_) => emitOffline());
 
         visibilitySub = web.document.onVisibilityChange.listen((_) {
           if (web.document.visibilityState == 'hidden') {

@@ -96,9 +96,16 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        // EventChannel is single-subscription on the native side. Be defensive
+        // if a second Dart stream starts before the first one cancels, otherwise
+        // the old callback would remain registered and continue probing.
+        if (networkCallback != null || this.events != null) {
+            onCancel(null)
+        }
         this.events = events
         
-        // 1. Send initial state immediately (non-blocking capability check)
+        // 1. Emit unambiguous offline immediately. An apparent online state is
+        // emitted only after the HTTPS probe succeeds.
         val network = connectivityManager.activeNetwork
         val caps = network?.let { connectivityManager.getNetworkCapabilities(it) }
         val hasInternet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
@@ -106,12 +113,10 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
         val initialCheck = hasInternet && hasValidated
         
         pendingOfflineSignals = 0
-        emitToFlutter(events, initialCheck, force = true)
-        
-        // Verify with HTTPS test if capabilities say online
-        // This ensures we catch stale VALIDATED flags on initial load
         if (network != null && initialCheck) {
             verifyConnectivityAsync(network, forceFresh = true)
+        } else {
+            reportOfflineNow(events)
         }
 
         // 2. Define the callback
@@ -124,14 +129,10 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val quickCheck = hasInternet && hasValidated
                 
                 if (quickCheck) {
-                    reportOnline(events)
+                    // OS capabilities are only a hint; the probe emits true.
+                    verifyConnectivityAsync(network, forceFresh = true)
                 } else {
                     reportOfflineCandidate(events)
-                }
-
-                // Verify with HTTPS test if capabilities say online (may override to offline later)
-                if (quickCheck) {
-                    verifyConnectivityAsync(network, forceFresh = true)
                 }
 
                 // Start periodic checks when network is available
@@ -146,7 +147,7 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                     val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                     val quickCheck = hasInternet && hasValidated
                     if (quickCheck) {
-                        reportOnline(events)
+                        verifyConnectivityAsync(activeNetwork, forceFresh = true)
                     } else {
                         reportOfflineCandidate(events)
                     }
@@ -170,14 +171,10 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasValidated = capsToCheck?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
 
-                if (quickCheck) {
-                    reportOnline(events)
-                } else {
-                    reportOfflineCandidate(events)
-                }
-
                 if (quickCheck && activeNetwork != null) {
                     verifyConnectivityAsync(activeNetwork, forceFresh = true)
+                } else {
+                    reportOfflineCandidate(events)
                 }
 
                 startPeriodicCheck()
@@ -198,13 +195,10 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                 val hasValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
                 val quickCheck = hasInternet && hasValidated
 
-                if (quickCheck) {
-                    reportOnline(events)
-                } else {
-                    reportOfflineCandidate(events)
-                }
                 if (quickCheck && activeNetwork != null) {
                     verifyConnectivityAsync(activeNetwork, forceFresh = true)
+                } else {
+                    reportOfflineCandidate(events)
                 }
                 startPeriodicCheck()
             }
@@ -296,12 +290,12 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                     }
                 } else {
                     mainHandler.post {
-                        reportOfflineCandidate(events)
+                        reportOfflineFromProbe(events)
                     }
                 }
             } catch (e: Exception) {
                 mainHandler.post {
-                    reportOfflineCandidate(events)
+                    reportOfflineFromProbe(events)
                 }
             }
         }
@@ -352,6 +346,15 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
         if (pendingOfflineSignals >= REQUIRED_OFFLINE_SIGNALS) {
             emitToFlutter(events, false)
             pendingOfflineSignals = 0
+        }
+    }
+
+    /** A failed first probe is enough to establish the initial offline state. */
+    private fun reportOfflineFromProbe(events: EventChannel.EventSink?) {
+        if (lastState == null) {
+            reportOfflineNow(events)
+        } else {
+            reportOfflineCandidate(events)
         }
     }
 
@@ -408,14 +411,17 @@ class ConnectivityValidatorPlugin : FlutterPlugin, EventChannel.StreamHandler, M
                     
                     val responseCode = connection.responseCode
 
-                    // generate_204 endpoints ALWAYS return 204. Any other response
-                    // (200 login page, 302 redirect, ...) means a captive portal or
-                    // proxy intercepted the request — that is NOT real internet.
+                    // generate_204 endpoints always return 204 when reachable.
                     if (responseCode == 204) {
                         return true
                     }
-                    // A portal intercepts every request, so trying the other URLs is pointless
-                    return false
+                    // Redirects with redirect-following disabled are a strong captive
+                    // portal signal. Other HTTP errors can be endpoint-specific (for
+                    // example, a corporate proxy blocks Google), so try the fallback.
+                    if (responseCode in 300..399) {
+                        return false
+                    }
+                    continue
                 }
             } catch (e: java.net.SocketTimeoutException) {
                 // Timeout - try next URL
